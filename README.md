@@ -12,7 +12,7 @@
 
 ---
 
-## 🌪 The Problem: Execution Without Intelligence
+## The Problem: Execution Without Intelligence
 
 Data-centre delivery has become a supply-chain and coordination problem wearing a construction costume. Large power transformers now quote 80–128 weeks and custom units stretch to 3–5 years. Delivery cycles have compressed below 18 months while equipment lead times exceed them. 
 
@@ -24,7 +24,7 @@ The thing that kills programmes isn't missing data; it's a **disconnected assump
 
 ---
 
-## 🧠 Core Architecture & Agents
+## Core Architecture & Agents
 
 Prometheus ingests every specification, submittal, PO, schedule, and test record into a typed **Project Knowledge Graph**, and runs an orchestrated team of AI agents that continuously reason over the graph. 
 
@@ -51,7 +51,7 @@ graph TD
 
 </div>
 
-### 🤖 The Agent Ecosystem
+### The Agent Ecosystem
 
 | Agent | Capability | Impact on Delivery |
 | :--- | :--- | :--- |
@@ -63,7 +63,7 @@ graph TD
 
 ---
 
-## 🏛 Technical Foundation
+## Technical Foundation
 
 Prometheus is built on **Feature Sliced Design (FSD)** atop a scalable **Next.js App Router** foundation. Every feature module is highly cohesive and strictly isolated.
 
@@ -73,7 +73,7 @@ Prometheus is built on **Feature Sliced Design (FSD)** atop a scalable **Next.js
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
 *   **Command Console**: A ranked, role-based "What needs a decision today?" dashboard.
 *   **Digital Thread Explorer**: Navigate any artifact to its connected neighborhood: `Spec ↔ Submittal ↔ PO ↔ Shipment ↔ Test Record`. 
@@ -82,7 +82,7 @@ Prometheus is built on **Feature Sliced Design (FSD)** atop a scalable **Next.js
 
 ---
 
-## 🛠 Getting Started
+## Getting Started
 
 ### Local Setup (Development)
 ```bash

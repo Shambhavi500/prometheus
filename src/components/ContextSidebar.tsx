@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useWorkspace } from '@/core/state/workspace';
 import type { DecisionRecord, Finding } from '@/server/types';
+import { FileText } from 'lucide-react';
 
 export function ContextSidebar({ decision, finding, entityTags }: { decision: DecisionRecord, finding: Finding, entityTags: any[] }) {
   const router = useRouter();
@@ -66,7 +67,7 @@ export function ContextSidebar({ decision, finding, entityTags }: { decision: De
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {finding.citations.map(c => (
             <span key={c.blockId} style={{ color: 'var(--amber)', fontSize: 'var(--fs-11)', cursor: 'pointer' }}>
-              📄 {c.docTitle}
+              <FileText size={14} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'text-bottom' }} /> {c.docTitle}
             </span>
           ))}
         </div>

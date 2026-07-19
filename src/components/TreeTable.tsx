@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { CX_LEVELS, CX_LEVEL_NAME, type CxNode, type CxStatus } from '@/server/types';
+import { Check, CircleDashed, AlertTriangle, X, Circle } from 'lucide-react';
 
 /**
  * TreeTable — L1–L5 commissioning readiness. Indentation strictly 16px/level;
@@ -18,12 +19,12 @@ const STATUS_CLASS: Record<CxStatus, string> = {
   'Not Started': 'cx--none',
 };
 
-const STATUS_GLYPH: Record<CxStatus, string> = {
-  Complete: '✓',
-  'In Progress': '◐',
-  'At Risk': '!',
-  Blocked: '✕',
-  'Not Started': '·',
+const STATUS_GLYPH: Record<CxStatus, React.ReactNode> = {
+  Complete: <Check size={14} />,
+  'In Progress': <CircleDashed size={14} />,
+  'At Risk': <AlertTriangle size={14} />,
+  Blocked: <X size={14} />,
+  'Not Started': <Circle size={14} opacity={0.3} />,
 };
 
 function LevelCell({ level, status }: { level: string; status: CxStatus }) {

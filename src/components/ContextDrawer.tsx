@@ -6,6 +6,7 @@ import { INVERSE_LABEL } from '@prometheus/ontology';
 import { useNeighborhood } from '@/core/api/hooks';
 import { useWorkspace } from '@/core/state/workspace';
 import { StatusBadge } from './StatusBadge';
+import { X } from 'lucide-react';
 
 /**
  * ContextDrawer — 360° view of any entity without leaving the page.
@@ -73,7 +74,7 @@ export function ContextDrawer() {
           </div>
           {focus?.status && <StatusBadge label={focus.status} />}
           <button type="button" className="drawer__close" onClick={closeDrawer} aria-label="Close context drawer" ref={closeRef}>
-            ✕
+            <X size={16} />
           </button>
         </div>
         <div className="drawer__body">

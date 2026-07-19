@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useWorkspace } from '@/core/state/workspace';
 import { useDecisions, useEntityIndex } from '@/core/api/hooks';
 import { DecisionDetail } from '@/features/decisions/DecisionDetail';
+import { X } from 'lucide-react';
 
 export function DecisionDrawer() {
   const decisionId = useWorkspace((s) => s.decisionDrawerId);
@@ -48,7 +49,7 @@ export function DecisionDrawer() {
             <div className="drawer__tag">{decision.id}</div>
           </div>
           <button type="button" className="drawer__close" onClick={closeDecisionDrawer} aria-label="Close decision drawer">
-            ✕
+            <X size={16} />
           </button>
         </div>
         <div className="drawer__body" style={{ padding: 0 }}>
