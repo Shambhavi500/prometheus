@@ -3,7 +3,6 @@
 import { usePathname } from 'next/navigation';
 import { useWorkspace } from '@/core/state/workspace';
 import { useDecisions } from '@/core/api/hooks';
-import { Search, Bell, CircleUser } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import Link from 'next/link';
 
@@ -75,20 +74,7 @@ export function UniversalBreadcrumb() {
 
       {/* Right: Actions */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '16px', flex: 1 }}>
-        <button aria-label="Search" style={{ color: 'var(--txt-md)', display: 'flex' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--txt-hi)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--txt-md)'}>
-          <Search size={18} />
-        </button>
-        <button aria-label="Notifications" style={{ color: 'var(--txt-md)', display: 'flex' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--txt-hi)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--txt-md)'}>
-          <Bell size={18} />
-        </button>
-        
-        <div style={{ width: '1px', height: '24px', background: 'var(--line)' }} />
-        
         <ThemeToggle />
-        
-        <button aria-label="User Avatar" style={{ color: 'var(--txt-md)', display: 'flex' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--txt-hi)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--txt-md)'}>
-          <CircleUser size={22} />
-        </button>
       </div>
     </header>
   );
