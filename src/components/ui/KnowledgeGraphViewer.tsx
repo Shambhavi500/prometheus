@@ -13,6 +13,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { ComplianceAuditResult } from '@/ontology/engineering';
+import { useTheme } from 'next-themes';
 
 interface KnowledgeGraphViewerProps {
   data: ComplianceAuditResult | null;
@@ -21,6 +22,7 @@ interface KnowledgeGraphViewerProps {
 export function KnowledgeGraphViewer({ data }: KnowledgeGraphViewerProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (!data) {
@@ -40,13 +42,12 @@ export function KnowledgeGraphViewer({ data }: KnowledgeGraphViewerProps) {
       id: specNodeId,
       position: { x: 500, y: yOffset },
       data: { label: 'Master Specifications' },
-      style: { width: 250, background: '#1e3a8a', color: '#fff', border: '1px solid #3b82f6', borderRadius: '4px', padding: '10px' },
+      style: { width: 250, background: 'var(--card)', color: 'var(--text)', border: '2px solid var(--primary)', borderRadius: 'var(--radius)', padding: '10px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' },
     });
 
     yOffset += 120;
 
     // 2. Add Extracted Entities (Equipment)
-    // Spread them out horizontally
     const entityStartX = Math.max(50, 500 - (data.entitiesExtracted.length * 200) / 2);
     data.entitiesExtracted.forEach((entity, index) => {
       const entityId = `entity-${entity.id || index}`;
@@ -54,7 +55,7 @@ export function KnowledgeGraphViewer({ data }: KnowledgeGraphViewerProps) {
         id: entityId,
         position: { x: entityStartX + index * 220, y: yOffset },
         data: { label: `${entity.type}: ${entity.name}` },
-        style: { width: 200, background: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px', padding: '10px' },
+        style: { width: 200, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '10px' },
       });
       
       generatedEdges.push({
@@ -62,7 +63,7 @@ export function KnowledgeGraphViewer({ data }: KnowledgeGraphViewerProps) {
         source: specNodeId,
         target: entityId,
         animated: true,
-        style: { stroke: '#9ca3af' },
+        style: { stroke: 'var(--muted)' },
       });
     });
 
@@ -75,7 +76,7 @@ export function KnowledgeGraphViewer({ data }: KnowledgeGraphViewerProps) {
         id: devNodeId,
         position: { x: 250 + index * 600, y: yOffset },
         data: { label: `Deviation: ${dev.reason}` },
-        style: { width: 400, background: '#7f1d1d', color: '#fff', border: '1px solid #ef4444', borderRadius: '4px', padding: '10px' },
+        style: { width: 400, background: 'var(--card)', color: 'var(--text)', border: '2px solid var(--danger)', borderRadius: 'var(--radius)', padding: '10px', boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.1)' },
       });
 
       // Link Deviation to the Spec
@@ -84,10 +85,10 @@ export function KnowledgeGraphViewer({ data }: KnowledgeGraphViewerProps) {
         source: specNodeId,
         target: devNodeId,
         animated: true,
-        style: { stroke: '#ef4444', strokeWidth: 2 },
+        style: { stroke: 'var(--danger)', strokeWidth: 2 },
         label: 'VIOLATES',
-        labelStyle: { fill: '#ef4444', fontWeight: 700 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#ef4444' },
+        labelStyle: { fill: 'var(--danger)', fontWeight: 700 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--danger)' },
       });
 
       // Add Downstream Risks
@@ -99,7 +100,7 @@ export function KnowledgeGraphViewer({ data }: KnowledgeGraphViewerProps) {
           id: riskNodeId,
           position: { x: lastRiskX, y: yOffset + 250 },
           data: { label: `Risk: ${risk.affectedSystem}` },
-          style: { width: 220, background: '#9a3412', color: '#fff', border: '1px solid #f97316', borderRadius: '4px', padding: '10px' },
+          style: { width: 220, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--warning)', borderRadius: 'var(--radius)', padding: '10px' },
         });
 
         generatedEdges.push({
@@ -107,18 +108,18 @@ export function KnowledgeGraphViewer({ data }: KnowledgeGraphViewerProps) {
           source: devNodeId,
           target: riskNodeId,
           animated: true,
-          style: { stroke: '#f97316' },
+          style: { stroke: 'var(--warning)' },
           label: 'AFFECTS',
         });
       });
 
-      // Add Recommendation (place it to the right of the last risk node)
+      // Add Recommendation
       const recNodeId = `rec-${index}`;
       generatedNodes.push({
         id: recNodeId,
         position: { x: lastRiskX + 270, y: yOffset + 250 },
         data: { label: `Mitigation: ${dev.recommendation.action}` },
-        style: { width: 320, background: '#14532d', color: '#fff', border: '1px solid #22c55e', borderRadius: '4px', padding: '10px' },
+        style: { width: 320, background: 'var(--card)', color: 'var(--text)', border: '2px solid var(--success)', borderRadius: 'var(--radius)', padding: '10px' },
       });
 
       generatedEdges.push({
@@ -126,9 +127,9 @@ export function KnowledgeGraphViewer({ data }: KnowledgeGraphViewerProps) {
         source: recNodeId, // Recommendation mitigates Deviation
         target: devNodeId,
         animated: true,
-        style: { stroke: '#22c55e' },
+        style: { stroke: 'var(--success)' },
         label: 'MITIGATES',
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#22c55e' },
+        markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--success)' },
       });
     });
 
@@ -144,11 +145,11 @@ export function KnowledgeGraphViewer({ data }: KnowledgeGraphViewerProps) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         fitView
-        className="dark"
+        colorMode={theme === 'dark' ? 'dark' : 'light'}
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="#333" gap={16} />
-        <Controls className="!bg-gray-900 !border-gray-800 !fill-gray-400" />
+        <Background color="var(--muted)" gap={16} />
+        <Controls style={{ background: 'var(--surface)', borderColor: 'var(--border)', fill: 'var(--text)' }} />
       </ReactFlow>
     </div>
   );

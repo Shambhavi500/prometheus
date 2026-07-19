@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWorkspace } from '@/core/state/workspace';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface UploadedFile {
   id: string;
@@ -245,7 +246,10 @@ export default function Home() {
 
   if (step === 'WORKSPACE') {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '32px 64px', background: 'var(--bg-0)', alignItems: 'center', overflowY: 'auto', width: '100%' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '32px 64px', background: 'var(--bg-0)', alignItems: 'center', overflowY: 'auto', width: '100%', position: 'relative' }}>
+        <div style={{ position: 'absolute', top: '32px', right: '32px', zIndex: 50 }}>
+          <ThemeToggle />
+        </div>
         <div style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0 32px 0', gap: '24px' }}>
             <img src="/prometheus_logo.png" alt="PROMETHEUS" style={{ height: '180px', objectFit: 'contain', filter: 'drop-shadow(0 0 32px rgba(0, 240, 255, 0.15))' }} />
@@ -326,7 +330,10 @@ export default function Home() {
 
   if (step === 'UPLOAD') {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '64px', background: 'var(--bg-0)', alignItems: 'center', overflowY: 'auto', width: '100%' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '64px', background: 'var(--bg-0)', alignItems: 'center', overflowY: 'auto', width: '100%', position: 'relative' }}>
+        <div style={{ position: 'absolute', top: '32px', right: '32px', zIndex: 50 }}>
+          <ThemeToggle />
+        </div>
         <div style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '48px' }}>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -459,7 +466,10 @@ export default function Home() {
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '64px', background: 'var(--bg-0)', alignItems: 'center', justifyContent: 'center', overflowY: 'auto', width: '100%' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '64px', background: 'var(--bg-0)', alignItems: 'center', justifyContent: 'center', overflowY: 'auto', width: '100%', position: 'relative' }}>
+      <div style={{ position: 'absolute', top: '32px', right: '32px', zIndex: 50 }}>
+        <ThemeToggle />
+      </div>
       <div style={{ width: '100%', maxWidth: '700px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>

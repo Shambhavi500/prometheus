@@ -6,24 +6,39 @@
  */
 
 :root {
-  --bg-0: #09090b;
-  --bg-1: #121214;
-  --bg-2: #1c1c1f;
-  --bg-3: #27272a;
-  --line: rgba(255, 255, 255, 0.06);
-  --line-strong: rgba(255, 255, 255, 0.12);
-  --txt-hi: #f4f4f5;
-  --txt-md: #a1a1aa;
-  --txt-lo: #71717a;
-  --teal: #14b8a6;
-  --teal-dim: rgba(20, 184, 166, 0.12);
-  --teal-line: rgba(20, 184, 166, 0.3);
-  --red: #ef4444;
-  --red-dim: rgba(239, 68, 68, 0.12);
-  --amber: #f59e0b;
-  --amber-dim: rgba(245, 158, 11, 0.12);
-  --green: #10b981;
-  --green-dim: rgba(16, 185, 129, 0.12);
+  /* Enterprise Light Theme Semantic Tokens */
+  --background: #F8FAFC;
+  --surface: #FFFFFF;
+  --card: #FFFFFF;
+  --secondary-surface: #F1F5F9;
+  --border: #E2E8F0;
+  --primary: #2563EB;
+  --success: #16A34A;
+  --warning: #D97706;
+  --danger: #DC2626;
+  --text: #0F172A;
+  --muted: #64748B;
+  
+  /* Transitional / Mapping for backward compatibility */
+  --bg-0: var(--background);
+  --bg-1: var(--surface);
+  --bg-2: var(--card);
+  --bg-3: var(--secondary-surface);
+  --line: var(--border);
+  --line-strong: #CBD5E1;
+  --txt-hi: var(--text);
+  --txt-md: var(--muted);
+  --txt-lo: #94A3B8;
+  --teal: var(--primary);
+  --teal-dim: rgba(37, 99, 235, 0.12);
+  --teal-line: rgba(37, 99, 235, 0.3);
+  --red: var(--danger);
+  --red-dim: rgba(220, 38, 38, 0.12);
+  --amber: var(--warning);
+  --amber-dim: rgba(217, 119, 6, 0.12);
+  --green: var(--success);
+  --green-dim: rgba(22, 163, 74, 0.12);
+
   --font-ui: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', 'Cascadia Mono', 'Consolas', 'SF Mono', monospace;
   --fs-10: 10px;
@@ -32,7 +47,42 @@
   --fs-13: 13px;
   --fs-14: 14px;
   --fs-16: 16px;
-  --radius: 2px;
+  --radius: 4px;
+}
+
+.dark {
+  /* Refined Dark Theme Semantic Tokens */
+  --background: #0B0F14;
+  --surface: #111827;
+  --card: #161B22;
+  --secondary-surface: #1F2937;
+  --border: #2A3441;
+  --primary: #3B82F6;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --text: #F8FAFC;
+  --muted: #94A3B8;
+
+  /* Transitional / Mapping for backward compatibility */
+  --bg-0: var(--background);
+  --bg-1: var(--surface);
+  --bg-2: var(--card);
+  --bg-3: var(--secondary-surface);
+  --line: var(--border);
+  --line-strong: rgba(255, 255, 255, 0.12);
+  --txt-hi: var(--text);
+  --txt-md: var(--muted);
+  --txt-lo: #71717a;
+  --teal: var(--primary);
+  --teal-dim: rgba(59, 130, 246, 0.12);
+  --teal-line: rgba(59, 130, 246, 0.3);
+  --red: var(--danger);
+  --red-dim: rgba(239, 68, 68, 0.12);
+  --amber: var(--warning);
+  --amber-dim: rgba(245, 158, 11, 0.12);
+  --green: var(--success);
+  --green-dim: rgba(34, 197, 94, 0.12);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -40,12 +90,13 @@
 html, body { height: 100%; overflow: hidden; }
 
 body {
-  background: var(--bg-0);
-  color: var(--txt-hi);
+  background: var(--background);
+  color: var(--text);
   font-family: var(--font-ui);
   font-size: var(--fs-13);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
