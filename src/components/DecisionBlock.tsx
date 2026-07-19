@@ -28,18 +28,36 @@ export function SignedState({ decision }: { decision: DecisionRecord }) {
     signedAt: decision.signedAt,
     writeBack: decision.writeBack?.system ?? 'Knowledge Graph',
   };
+
+  const handleDownload = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+    const dlAnchorElem = document.createElement('a');
+    dlAnchorElem.setAttribute("href", dataStr);
+    dlAnchorElem.setAttribute("download", `webhook_payload_${decision.id}.json`);
+    dlAnchorElem.click();
+  };
+
   return (
-    <div className="signed" role="status">
-      <span className="signed__lock" tabIndex={0} aria-label="Immutable audit record. Focus to view the write-back payload.">
-        <LockIcon />
-        <span className="signed__payload">{JSON.stringify(payload, null, 2)}</span>
-      </span>
-      <div>
-        <div className="signed__title">Approved · {decision.action}</div>
-        <div className="signed__meta">
-          {decision.signedBy} · {decision.signedRole} · {decision.signedAt ? fmtAuditTs(decision.signedAt) : ''}
+    <div className="signed" role="status" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: '16px' }}>
+        <span className="signed__lock" tabIndex={0} aria-label="Immutable audit record. Focus to view the write-back payload.">
+          <LockIcon />
+          <span className="signed__payload">{JSON.stringify(payload, null, 2)}</span>
+        </span>
+        <div>
+          <div className="signed__title">Approved · {decision.action}</div>
+          <div className="signed__meta">
+            {decision.signedBy} · {decision.signedRole} · {decision.signedAt ? fmtAuditTs(decision.signedAt) : ''}
+          </div>
         </div>
       </div>
+      <button 
+        type="button" 
+        onClick={handleDownload}
+        style={{ padding: '6px 12px', fontSize: '11px', background: 'var(--teal-dim)', color: 'var(--teal)', border: '1px solid var(--teal)', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}
+      >
+        ↓ Download Webhook Payload
+      </button>
     </div>
   );
 }

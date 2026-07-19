@@ -48,10 +48,25 @@ export function EvidenceViewer({ docId, highlightBlockId }: { docId: string; hig
               <div
                 key={block.id}
                 ref={hl ? highlightRef : undefined}
-                className={`evidence__block evidence__block--${block.kind}${hl ? ' hl' : ''}`}
+                style={{
+                  padding: hl ? '16px' : '8px 16px',
+                  background: hl ? 'var(--teal-dim)' : 'transparent',
+                  border: hl ? '1px solid var(--teal)' : '1px solid transparent',
+                  borderLeft: hl ? '4px solid var(--teal)' : '4px solid transparent',
+                  borderRadius: '4px',
+                  margin: hl ? '8px 0' : '0',
+                  transition: 'all 0.2s ease',
+                  position: 'relative'
+                }}
+                className={`evidence__block evidence__block--${block.kind}`}
               >
-                <span className="evidence__clause">{block.clause ?? ''}</span>
-                <span>{block.text}</span>
+                {hl && (
+                  <div style={{ position: 'absolute', top: '-10px', left: '12px', background: 'var(--bg-0)', border: '1px solid var(--teal)', color: 'var(--teal)', fontSize: '10px', padding: '2px 8px', borderRadius: '4px', fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }}>
+                    Extracted Entity Match
+                  </div>
+                )}
+                <span className="evidence__clause" style={{ color: hl ? 'var(--teal)' : 'var(--txt-lo)' }}>{block.clause ?? ''}</span>
+                <span style={{ color: hl ? 'var(--txt-hi)' : 'var(--txt-md)' }}>{block.text}</span>
               </div>
             );
           })}

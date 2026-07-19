@@ -158,90 +158,68 @@ export default function Home() {
   // AI Processing Simulation & Live API Execution
   const runAiPipeline = async () => {
     setStep('PROCESSING');
-    setConsoleLogs(["[00:01] Ingesting connected project documents..."]);
-
-    const log = (msg: string, delay: number) => {
-      return new Promise<void>(resolve => {
-        setTimeout(() => {
-          setConsoleLogs(prev => [...prev, msg]);
-          resolve();
-        }, delay);
-      });
-    };
-
-    await log("[00:03] Loading project context: Prometheus (NM-1)", 400);
-    await log(`[00:06] Found ${Object.values(categories).reduce((a, b) => a + b, 0)} registered documents in database.`, 300);
-    
-    // Upload files processing
-    if (uploadedFiles.length > 0) {
-      await log(`[00:09] Initializing ingestion of ${uploadedFiles.length} user-uploaded documents...`, 400);
-      for (const file of uploadedFiles) {
-        await log(`[00:12] Ingesting: ${file.name} (${(file.size / 1024).toFixed(1)} KB) -> [${file.category}]`, 300);
-      }
-    }
-
-    setProcessingProgress(20);
-    await log("[00:18] Initializing Gemini Multimodal Engine for Document Understanding...", 600);
     
     // Call Ingest endpoint for custom files or fallback mock
     const ocrFiles = uploadedFiles.length > 0 ? uploadedFiles : [{ name: 'TX01_Submittal.pdf', base64: 'mock_base64_data', type: 'application/pdf' }];
     
-    for (const file of ocrFiles) {
-      await log(`[00:26] Gemini API: POST /api/ingest -> Processing: ${file.name}`, 400);
-      
-      try {
-        const response = await fetch('/api/ingest', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            base64: file.base64 || 'mock_basic_image',
-            fileName: file.name,
-            mimeType: (file as any).type || 'application/pdf'
-          })
-        });
+    // For prototype simplicity, we process the first file via SSE to demonstrate the real pipeline
+    const file = ocrFiles[0];
+    
+    try {
+      const response = await fetch('/api/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base64: file.base64 || 'mock_basic_image',
+          fileName: file.name,
+          mimeType: (file as any).type || 'application/pdf'
+        })
+      });
 
-        if (!response.ok) throw new Error("API Failure");
-        
-        const data = await response.json();
-        await log(`[00:32] Gemini Extraction Success for ${file.name}`, 400);
-        
-        if (data.extractions && data.extractions.length > 0) {
-          await log(`           Entities Extracted:`, 200);
-          data.extractions.forEach((ex: any) => {
-             setConsoleLogs(prev => [...prev, `           > ${ex.equipmentTag} | ${ex.parameter}: ${ex.value}`]);
-          });
-        } else {
-           await log(`           > No technical specifications found.`, 200);
-        }
-
-        if (data.evaluations > 0) {
-           await log(`[00:35] Spec Compliance Agent evaluated ${data.evaluations} extracted parameters. Deviations found!`, 200);
-        }
-      } catch (err) {
-        await log(`[00:34] Gemini API Local Fallback active: Mocking parameters for ${file.name}`, 300);
+      if (!response.ok || !response.body) {
+        throw new Error("API Failure");
       }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.log) {
+                setConsoleLogs(prev => [...prev, data.log]);
+              }
+              if (data.progress) {
+                setProcessingProgress(data.progress);
+              }
+              if (data.error) {
+                 setConsoleLogs(prev => [...prev, `[ERROR] ${data.error}`]);
+              }
+              if (data.done) {
+                setLogsComplete(true);
+                setProjectInitialized(true);
+                setTimeout(() => {
+                  router.push('/overview');
+                }, 1200);
+              }
+            } catch (e) {
+              // Ignore parse errors for incomplete chunks
+            }
+          }
+        }
+      }
+    } catch (err) {
+      setConsoleLogs(prev => [...prev, `[ERROR] Ingestion pipeline failed to connect.`]);
     }
-
-    setProcessingProgress(60);
-    await log("[00:42] Building semantic entity layout map...", 500);
-    await log("[00:46] Merging document graph with Helios EPC Knowledge precedents...", 400);
-    
-    setProcessingProgress(85);
-    await log("  → [Schedule Risk Agent]: Real-time recalculation complete.", 500);
-    await log("  → [Supply Chain Agent]: Vendor timeline evaluation complete.", 500);
-    await log("  → [Commissioning Agent]: L1-L5 readiness dependency graph updated.", 500);
-
-    setProcessingProgress(98);
-    await log("[00:58] Merging insights into Project Meghdoot Graph Memory...", 400);
-    await log("[01:00] Ingestion sequence complete. Initializing Mission Control...", 400);
-    
-    setProcessingProgress(100);
-    setLogsComplete(true);
-    setProjectInitialized(true);
-
-    setTimeout(() => {
-      router.push('/overview');
-    }, 1200);
   };
 
   if (step === 'WORKSPACE') {

@@ -29,6 +29,7 @@ export function DecisionDetail({
   entityTags: Array<{ id: string; tag: string; uncertain?: boolean }>;
 }) {
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
+  const [viewMode, setViewMode] = useState<'normal' | 'graph'>('normal');
 
   useEffect(() => setActiveCitation(null), [finding.id]);
 
@@ -36,61 +37,102 @@ export function DecisionDetail({
     <div style={{ display: 'flex', height: '100%' }}>
       <div className="detail" style={{ flex: 1, overflowY: 'auto' }}>
         <div className="detail__header">
-        <div className="detail__kicker">
-          <span>{decision.id}</span>
-          <StatusBadge label={finding.severity} />
-          <span>· {finding.agentName}</span>
-          <StatusBadge label={decision.status} />
+        <div className="detail__kicker" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span>{decision.id}</span>
+            <StatusBadge label={finding.severity} />
+            <span>· {finding.agentName}</span>
+            <StatusBadge label={decision.status} />
+          </div>
+          <div style={{ display: 'flex', background: 'var(--bg-1)', borderRadius: '4px', border: '1px solid var(--line)', overflow: 'hidden' }}>
+            <button 
+              type="button"
+              onClick={() => setViewMode('normal')}
+              style={{ padding: '4px 12px', fontSize: '11px', background: viewMode === 'normal' ? 'var(--teal-dim)' : 'transparent', color: viewMode === 'normal' ? 'var(--teal)' : 'var(--txt-md)', border: 'none', cursor: 'pointer' }}
+            >
+              Business View
+            </button>
+            <button 
+              type="button"
+              onClick={() => setViewMode('graph')}
+              style={{ padding: '4px 12px', fontSize: '11px', background: viewMode === 'graph' ? 'var(--teal-dim)' : 'transparent', color: viewMode === 'graph' ? 'var(--teal)' : 'var(--txt-md)', border: 'none', cursor: 'pointer', borderLeft: '1px solid var(--line)' }}
+            >
+              Developer View (Graph)
+            </button>
+          </div>
         </div>
         <div className="detail__title">{finding.title}</div>
       </div>
 
-      <div className="detail__section">
-        <div className="detail__label">Finding</div>
-        <div className="detail__text">{finding.finding}</div>
-        <div className="detail__cites">
-          {finding.citations.map((c) => (
-            <CitationTag key={c.blockId} citation={c} onOpen={setActiveCitation} />
-          ))}
-        </div>
-      </div>
+      {viewMode === 'normal' ? (
+        <>
+          <div className="detail__section">
+            <div className="detail__label">Finding</div>
+            <div className="detail__text">{finding.finding}</div>
+            <div className="detail__cites">
+              {finding.citations.map((c) => (
+                <CitationTag key={c.blockId} citation={c} onOpen={setActiveCitation} />
+              ))}
+            </div>
+          </div>
 
-      <div className="detail__section">
-        <div className="detail__label">Impact</div>
-        <div className="detail__text">{finding.impact}</div>
-      </div>
+          <div className="detail__section">
+            <div className="detail__label">Impact</div>
+            <div className="detail__text">{finding.impact}</div>
+          </div>
 
-      <div className="detail__section">
-        <div className="detail__label">Recommended Action</div>
-        <div className="detail__text">{finding.recommendation}</div>
-      </div>
+          <div className="detail__section">
+            <div className="detail__label">Recommended Action</div>
+            <div className="detail__text">{finding.recommendation}</div>
+          </div>
 
-      <div className="detail__section" style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span className="detail__conf">
-          Confidence:{' '}
-          <span className={finding.confidence < 0.8 ? 'low' : undefined}>
-            {fmtConfidence(finding.confidence)}
-            {finding.confidence < 0.8 ? ' — manual verification recommended' : ''}
-          </span>
-        </span>
-        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-          {entityTags.map((t) => (
-            <EntityTag key={t.id} id={t.id} tag={t.tag} uncertain={t.uncertain} />
-          ))}
-        </span>
-      </div>
+          <div className="detail__section" style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span className="detail__conf">
+              Confidence:{' '}
+              <span className={finding.confidence < 0.8 ? 'low' : undefined}>
+                {fmtConfidence(finding.confidence)}
+                {finding.confidence < 0.8 ? ' — manual verification recommended' : ''}
+              </span>
+            </span>
+            <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+              {entityTags.map((t) => (
+                <EntityTag key={t.id} id={t.id} tag={t.tag} uncertain={t.uncertain} />
+              ))}
+            </span>
+          </div>
 
-      {finding.cascade && (
-        <div className="detail__section" style={{ padding: 0 }}>
-          <div className="detail__label" style={{ padding: '12px 16px 0' }}>Computed Schedule Cascade</div>
-          <CascadeView cascade={finding.cascade} />
+          {finding.cascade && (
+            <div className="detail__section" style={{ padding: 0 }}>
+              <div className="detail__label" style={{ padding: '12px 16px 0' }}>Computed Schedule Cascade</div>
+              <CascadeView cascade={finding.cascade} />
+            </div>
+          )}
+
+          <div className="detail__section">
+            <div className="detail__label">Reasoning</div>
+            <ReasoningStream finding={finding} />
+          </div>
+        </>
+      ) : (
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div>
+            <div className="detail__label" style={{ marginBottom: '8px' }}>GraphRAG Traversal Query (Simulated)</div>
+            <div style={{ background: '#090d16', padding: '16px', borderRadius: '4px', border: '1px solid var(--line-strong)', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--green)', whiteSpace: 'pre-wrap' }}>
+{`// Executed by ${finding.agentName}
+MATCH (d:Document {id: "${finding.citations[0]?.docId || 'DOC-CURRENT'}"})-[:EXTRACTED]->(e:Entity)
+MATCH (e)-[rel*1..3]-(context:Node)
+WHERE context.type IN ['Schedule', 'Spec', 'Vendor']
+RETURN e, rel, context LIMIT 50`}
+            </div>
+          </div>
+          <div>
+            <div className="detail__label" style={{ marginBottom: '8px' }}>In-Memory Graph Nodes Identified</div>
+            <div style={{ background: '#090d16', padding: '16px', borderRadius: '4px', border: '1px solid var(--line-strong)', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--txt-md)', whiteSpace: 'pre-wrap', maxHeight: '300px', overflowY: 'auto' }}>
+{JSON.stringify(entityTags, null, 2)}
+            </div>
+          </div>
         </div>
       )}
-
-      <div className="detail__section">
-        <div className="detail__label">Reasoning</div>
-        <ReasoningStream finding={finding} />
-      </div>
 
       {activeCitation && (
         <div className="detail__section" style={{ padding: 0, display: 'flex', flexDirection: 'column', minHeight: 320 }}>
