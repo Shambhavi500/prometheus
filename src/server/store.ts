@@ -51,14 +51,16 @@ export function sessionScope(): TenantScope {
 
 const SEVERITY_RANK = { Critical: 0, High: 1, Medium: 2, Low: 3 } as const;
 
-function makeIds() {
-  let risk = 200;
-  let decision = 300;
-  let finding = 100;
+export function makeIds() {
+  let risk = 200 + Math.floor(Math.random() * 1000);
+  let decision = 300 + Math.floor(Math.random() * 1000);
+  let finding = 100 + Math.floor(Math.random() * 1000);
+  let check = 100 + Math.floor(Math.random() * 1000);
   return {
     risk: () => `RISK-${++risk}`,
     decision: () => `DEC-${++decision}`,
     finding: () => `F-${++finding}`,
+    check: () => `CHK-${++check}`,
   };
 }
 
@@ -249,3 +251,76 @@ export function rejectDecision(id: string, rationale: string): DecisionRecord {
   });
   return decision;
 }
+
+export function ingestDynamicSpec(row: SpecCheckRow, finding?: Finding, decision?: DecisionRecord) {
+  const store = getStore();
+  const now = new Date().toISOString();
+  
+  store.specRows.unshift(row);
+
+  if (finding && decision) {
+    store.findings.unshift(finding);
+    store.decisions.set(decision.id, decision);
+
+    const risk: EntityBase = {
+      id: finding.riskId, type: 'Risk', tag: finding.riskId, name: finding.title, status: 'Open',
+      owner: store.user.personId, verification: 'SystemVerified',
+      tenantId: store.user.tenantId, projectId: 'PRJ-AQUILA',
+      props: { severity: finding.severity, confidence: finding.confidence, agent: finding.agentName },
+    };
+    store.graph.addNode(risk);
+    store.graph.addEdge({ id: `E-${finding.riskId}-DET`, from: finding.agentId, to: finding.riskId, verb: 'DETECTED' });
+    for (const entityId of finding.entityIds) {
+      store.graph.addEdge({ id: `E-${finding.riskId}-${entityId}`, from: finding.riskId, to: entityId, verb: 'THREATENS' });
+    }
+
+    const decisionNode: EntityBase = {
+      id: finding.decisionId, type: 'Decision', tag: finding.decisionId, name: decision.action, status: 'Pending',
+      owner: store.user.personId, verification: 'SystemVerified',
+      tenantId: store.user.tenantId, projectId: 'PRJ-AQUILA',
+      props: { agent: finding.agentName },
+    };
+    store.graph.addNode(decisionNode);
+    store.graph.addEdge({ id: `E-${finding.decisionId}-MIT`, from: finding.decisionId, to: finding.riskId, verb: 'MITIGATES' });
+
+    store.audit.unshift({ ts: now, actor: finding.agentName, action: `DETECTED ${finding.riskId}`, target: finding.entityIds[0] ?? finding.riskId, source: 'Dynamic Document Ingestion' });
+  } else {
+    store.audit.unshift({ ts: now, actor: 'Spec-Compliance Agent', action: `VERIFIED ${row.equipmentTag}`, target: row.equipmentTag, source: 'Dynamic Document Ingestion' });
+  }
+}
+
+export function ingestDynamicFinding(finding: Finding, decision?: DecisionRecord) {
+  const store = getStore();
+  const now = new Date().toISOString();
+  
+  store.findings.unshift(finding);
+  if (decision) {
+    store.decisions.set(decision.id, decision);
+  }
+
+  const risk: EntityBase = {
+    id: finding.riskId, type: 'Risk', tag: finding.riskId, name: finding.title, status: 'Open',
+    owner: store.user.personId, verification: 'SystemVerified',
+    tenantId: store.user.tenantId, projectId: 'PRJ-AQUILA',
+    props: { severity: finding.severity, confidence: finding.confidence, agent: finding.agentName },
+  };
+  store.graph.addNode(risk);
+  store.graph.addEdge({ id: `E-${finding.riskId}-DET`, from: finding.agentId, to: finding.riskId, verb: 'DETECTED' });
+  for (const entityId of finding.entityIds) {
+    store.graph.addEdge({ id: `E-${finding.riskId}-${entityId}`, from: finding.riskId, to: entityId, verb: 'THREATENS' });
+  }
+
+  if (decision) {
+    const decisionNode: EntityBase = {
+      id: finding.decisionId, type: 'Decision', tag: finding.decisionId, name: decision.action, status: 'Pending',
+      owner: store.user.personId, verification: 'SystemVerified',
+      tenantId: store.user.tenantId, projectId: 'PRJ-AQUILA',
+      props: { agent: finding.agentName },
+    };
+    store.graph.addNode(decisionNode);
+    store.graph.addEdge({ id: `E-${finding.decisionId}-MIT`, from: finding.decisionId, to: finding.riskId, verb: 'MITIGATES' });
+  }
+
+  store.audit.unshift({ ts: now, actor: finding.agentName, action: `DETECTED ${finding.riskId}`, target: finding.entityIds[0] ?? finding.riskId, source: 'Dynamic Document Ingestion' });
+}
+

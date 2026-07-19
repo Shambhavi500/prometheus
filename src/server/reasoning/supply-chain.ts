@@ -135,3 +135,62 @@ export function runSupplyChain(
 
   return { data: { points, arcs }, findings };
 }
+
+import { ExtractedSupply } from '@/core/utils/ai';
+
+export function evaluateDynamicSupplyRisk(
+  ex: ExtractedSupply,
+  docId: string,
+  graph: TypedGraph,
+  ids: { risk: () => string; decision: () => string; finding: () => string }
+): { finding: Finding; decision: DecisionRecord } | null {
+  if (ex.status === 'Nominal') return null;
+  
+  const allNodes = graph.allNodes();
+  const vendor = allNodes.find(n => n.type === 'Vendor' && (n.name.toLowerCase().includes(ex.vendorName.toLowerCase()) || (n.tag && n.tag.toLowerCase().includes(ex.vendorName.toLowerCase()))));
+  if (!vendor) return null;
+
+  // Recompute score dynamically
+  const onTime = Number(vendor.props.onTimeRate12mo) || 0.95;
+  const forceMajeure = ex.status === 'Force Majeure';
+  const singleSource = vendor.id === 'VEN-KAPPA'; 
+  const score = vendorRiskScore({ onTimeRate: onTime, forceMajeure, singleSource });
+
+  const decisionId = ids.decision();
+
+  const finding: Finding = {
+    id: ids.finding(),
+    agentId: 'AGT-SUPPLY',
+    agentName: 'Supply-Chain Agent',
+    kind: 'supply-chain',
+    severity: score >= 0.7 ? 'Critical' : score >= 0.35 ? 'High' : 'Medium',
+    title: `${vendor.name} ${ex.status.toLowerCase()} detected`,
+    finding: `Dynamic ingestion identified a ${ex.status} status for ${vendor.name} [${docId}]. Note: ${ex.note || 'None'}. Aggregate vendor risk score updated to ${(score * 100).toFixed(0)}%.`,
+    impact: `Shipments originating from ${vendor.name} are at elevated risk, potentially blocking downstream commissioning.`,
+    recommendation: `Issue alternate-vendor RFQ for scopes tied to ${vendor.name} and evaluate expediting from secondary sources.`,
+    confidence: 0.9,
+    citations: [{ docId, docTitle: `AI Extraction (${docId})`, page: 1, blockId: 'dynamic-extract', quote: `Status: ${ex.status}`, clause: 'Vendor Notice' }],
+    trace: [
+      { index: 1, total: 3, actor: 'Supply-Chain Agent', text: `Extracted ${ex.status} status for ${vendor.name} from ${docId}.`, payload: { status: ex.status } },
+      { index: 2, total: 3, actor: 'Supply-Chain Agent', text: `Recalculating vendor risk score...`, payload: { forceMajeure, onTime } },
+      { index: 3, total: 3, actor: 'Supply-Chain Agent', text: `Vendor risk score updated to ${(score * 100).toFixed(0)}%. Escalating.` }
+    ],
+    entityIds: [vendor.id],
+    riskId: ids.risk(),
+    decisionId,
+  };
+
+  const decision: DecisionRecord = {
+    id: decisionId,
+    findingId: finding.id,
+    severity: finding.severity,
+    agentName: 'Supply-Chain Agent',
+    action: `Issue alternate-vendor RFQ for ${vendor.name}`,
+    impact: finding.impact,
+    status: 'Pending',
+    createdAt: new Date().toISOString(),
+    writeBack: { system: 'Octave', message: 'Alternate-vendor RFQ generated and routed to Procurement.' }
+  };
+
+  return { finding, decision };
+}

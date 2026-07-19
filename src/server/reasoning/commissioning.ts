@@ -112,3 +112,58 @@ export function runCommissioning(
 
   return { tree, findings };
 }
+
+import { ExtractedTestRecord } from '@/core/utils/ai';
+
+export function evaluateDynamicCommissioningRisk(
+  ex: ExtractedTestRecord,
+  docId: string,
+  graph: TypedGraph,
+  ids: { risk: () => string; decision: () => string; finding: () => string }
+): { finding: Finding; decision: DecisionRecord } | null {
+  if (ex.status === 'Complete' || ex.status === 'In Progress' || ex.status === 'Not Started') return null;
+  
+  const allNodes = graph.allNodes();
+  const subsystem = allNodes.find(n => n.type === 'Subsystem' && (n.tag === ex.subsystemTag || n.name.includes(ex.subsystemTag)));
+  if (!subsystem) return null;
+
+  const system = graph.in(subsystem.id, 'CONTAINS').map(e => graph.getNode(e.from)).find(n => n?.type === 'System');
+  
+  const decisionId = ids.decision();
+
+  const finding: Finding = {
+    id: ids.finding(),
+    agentId: 'AGT-CX',
+    agentName: 'Commissioning Agent',
+    kind: 'commissioning-gap',
+    severity: ex.status === 'Blocked' ? 'Critical' : 'High',
+    title: `${ex.subsystemTag} ${ex.level} testing is ${ex.status.toLowerCase()}`,
+    finding: `Dynamic ingestion extracted a test record [${docId}] indicating ${ex.subsystemTag} ${ex.level} is ${ex.status}.`,
+    impact: `The ${ex.status.toLowerCase()} status prevents downstream ${ex.level} and subsequent integrated systems testing${system ? ` for ${system.tag}` : ''}.`,
+    recommendation: `Investigate blockers for ${ex.subsystemTag} ${ex.level} and re-sequence concurrent testing.`,
+    confidence: 0.95,
+    citations: [{ docId, docTitle: `AI Extraction (${docId})`, page: 1, blockId: 'dynamic-extract', quote: `Status: ${ex.status}`, clause: 'Test Record' }],
+    trace: [
+      { index: 1, total: 3, actor: 'Commissioning Agent', text: `Extracted ${ex.status} status for ${ex.subsystemTag} ${ex.level} from ${docId}.`, payload: { status: ex.status } },
+      { index: 2, total: 3, actor: 'Commissioning Agent', text: `Traversing graph to identify impacted systems...`, payload: { system: system?.tag } },
+      { index: 3, total: 3, actor: 'Commissioning Agent', text: `Testing block detected. Escalating.` }
+    ],
+    entityIds: system ? [system.id, subsystem.id] : [subsystem.id],
+    riskId: ids.risk(),
+    decisionId,
+  };
+
+  const decision: DecisionRecord = {
+    id: decisionId,
+    findingId: finding.id,
+    severity: finding.severity,
+    agentName: 'Commissioning Agent',
+    action: `Re-sequence testing for ${ex.subsystemTag}`,
+    impact: finding.impact,
+    status: 'Pending',
+    createdAt: new Date().toISOString(),
+    writeBack: { system: 'Smart Completions', message: 'Commissioning re-sequence logged.' }
+  };
+
+  return { finding, decision };
+}

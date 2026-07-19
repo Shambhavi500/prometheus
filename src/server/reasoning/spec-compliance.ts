@@ -167,3 +167,121 @@ export function runSpecCompliance(graph: TypedGraph, ids: { risk: () => string; 
 
   return { rows, findings };
 }
+
+import { ExtractedSpec } from '@/core/utils/ai';
+
+export function evaluateDynamicExtraction(
+  ex: ExtractedSpec,
+  submittalTag: string,
+  docId: string,
+  graph: TypedGraph,
+  ids: { risk: () => string; decision: () => string; finding: () => string; check: () => string }
+): { row: SpecCheckRow; finding?: Finding; decision?: DecisionRecord } | null {
+  const allNodes = graph.allNodes();
+  
+  // Find equipment
+  const equipment = allNodes.find(n => n.type === 'Equipment' && (n.tag === ex.equipmentTag || n.name === ex.equipmentTag));
+  if (!equipment) return null;
+
+  // Find requirement
+  const requirementEdges = graph.in(equipment.id, 'APPLIES_TO');
+  const requirements = requirementEdges.map(e => graph.requireNode(e.from));
+  
+  const req = requirements.find(r => 
+    String(r.props.parameter).toLowerCase().includes(ex.parameter.toLowerCase()) ||
+    ex.parameter.toLowerCase().includes(String(r.props.parameter).toLowerCase())
+  );
+  if (!req) return null;
+
+  // Mock submittal node if it doesn't exist, though we could just create a transient one
+  const submittalNode = allNodes.find(n => n.tag === submittalTag);
+  const submittalId = submittalNode ? submittalNode.id : `SUB-${Date.now()}`;
+  
+  const specCitation = cite(String(req.props.docId), String(req.props.blockId));
+  const submittalCitation = cite(docId, 'Extracted by AI');
+
+  const requiredValue = req.props.value;
+  const unit = req.props.unit ? ` ${req.props.unit}` : '';
+  const requiredDisplay = typeof requiredValue === 'number' ? `${req.props.operator === '>=' ? '≥ ' : req.props.operator === '<=' ? '≤ ' : ''}${requiredValue}${unit}${req.props.secondary ? `, ${req.props.secondary}` : ''}` : String(req.name);
+
+  // Parse numeric value from AI extraction (e.g. "5.75%" -> 5.75)
+  const numericMatch = ex.value.match(/[\d.]+/);
+  const parsedValue = numericMatch ? parseFloat(numericMatch[0]) : null;
+
+  let verdict: SpecCheckRow['verdict'];
+  if (parsedValue === null) {
+    verdict = 'Data Gap';
+  } else if (typeof requiredValue === 'number') {
+    const pass = evaluateLimit({ operator: req.props.operator as NumericComparison['operator'], required: requiredValue, submitted: parsedValue });
+    verdict = pass ? 'Compliant' : 'Deviation';
+  } else {
+    verdict = 'Compliant';
+  }
+
+  const rowId = ids.check ? ids.check() : `CHK-${Date.now()}`;
+  
+  const row: SpecCheckRow = {
+    id: rowId,
+    requirementId: req.id,
+    requirementTag: req.tag,
+    equipmentId: equipment.id,
+    equipmentTag: equipment.tag,
+    submittalId: submittalId,
+    submittalTag: submittalTag,
+    parameter: String(req.props.parameter),
+    required: requiredDisplay,
+    submitted: ex.value,
+    verdict,
+    confidence: 0.95,
+    specCitation,
+    submittalCitation,
+  };
+
+  if (verdict === 'Deviation') {
+    const riskId = ids.risk();
+    const decisionId = ids.decision();
+    const findingId = ids.finding();
+    row.findingId = findingId;
+    
+    const trace: TraceStep[] = [
+      { index: 1, total: 4, actor: 'Spec-Compliance Agent', text: `Extracting ${String(req.props.parameter).toLowerCase()} requirement from ${specCitation.docTitle} Clause ${specCitation.clause}...`, payload: { requirement: requiredDisplay, source: specCitation.blockId } },
+      { index: 2, total: 4, actor: 'Spec-Compliance Agent', text: `Multimodal LLM extracted submitted electrical data from ${submittalTag}...`, payload: { submitted: ex.value, source: 'AI Extraction' } },
+      { index: 3, total: 4, actor: 'Spec-Compliance Agent', text: `Evaluating deterministic comparison: required ${requiredValue}${unit} = submitted ${parsedValue}${unit} → false.`, payload: { operator: req.props.operator, required: requiredValue, submitted: parsedValue } },
+      { index: 4, total: 4, actor: 'Spec-Compliance Agent', text: `Deviation recorded. Confidence 95% (multimodal context match).` },
+    ];
+    
+    const finding: Finding = {
+      id: findingId,
+      agentId: 'AGT-SPEC',
+      agentName: 'Spec-Compliance Agent',
+      kind: 'spec-deviation',
+      severity: 'High',
+      title: `${equipment.tag} ${String(req.props.parameter).toLowerCase()} deviation`,
+      finding: `${submittalTag} states ${ex.value}, conflicting with the ${requiredDisplay} requirement [${specCitation.docTitle}, Clause ${specCitation.clause}].`,
+      impact: `Non-compliant supply blocks L2 energization. Discovered dynamically via AI ingestion.`,
+      recommendation: `Generate RFI to Owner documenting the deviation. Hold ${submittalTag} disposition.`,
+      confidence: 0.95,
+      citations: [specCitation, submittalCitation],
+      trace,
+      entityIds: [equipment.id, submittalId, req.id],
+      riskId,
+      decisionId,
+    };
+    
+    const decision: DecisionRecord = {
+      id: decisionId,
+      findingId,
+      severity: 'High',
+      agentName: 'Spec-Compliance Agent',
+      action: `Generate RFI for ${finding.title.split(' ')[0]} deviation`,
+      impact: finding.impact,
+      status: 'Pending',
+      createdAt: new Date().toISOString(),
+      writeBack: { system: 'Octave', message: 'RFI generated and routed to Owner.' },
+    };
+    
+    return { row, finding, decision };
+  }
+  
+  return { row };
+}

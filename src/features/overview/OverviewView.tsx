@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDecisions, useSupplyChain } from '@/core/api/hooks';
+import { useDecisions, useSupplyChain, useSpecRows, useAudit } from '@/core/api/hooks';
 import { useWorkspace } from '@/core/state/workspace';
 import { StatusBadge } from '@/components/StatusBadge';
 
@@ -35,7 +35,18 @@ export function OverviewView() {
   const primaryFinding = primaryDecision ? decData?.findings[primaryDecision.findingId] : null;
 
   const vendorCritical = supply?.points.filter((p: any) => p.riskLevel === 'Critical').length ?? 0;
-  
+  const { data: specData } = useSpecRows();
+  const { data: auditData } = useAudit();
+
+  const specRows = specData?.rows ?? [];
+  const compliantCount = specRows.filter(r => r.verdict === 'Compliant').length;
+  const specCompliancePct = specRows.length > 0 ? ((compliantCount / specRows.length) * 100).toFixed(1) : '100.0';
+
+  const openRisks = Object.values(decData?.findings ?? {}).length;
+  const operationalHealth = Math.max(0, 100 - (criticalPending.length * 5) - (vendorCritical * 3) - ((specRows.length - compliantCount) * 2)).toFixed(1);
+
+  const auditEntries = auditData?.entries ?? [];
+
   return (
     <div className="page" style={{ background: 'var(--bg-0)' }}>
       {/* Top Bar */}
@@ -60,7 +71,7 @@ export function OverviewView() {
                 Operational Health
               </div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '48px', fontWeight: 400, color: 'var(--teal)', lineHeight: 1, letterSpacing: '-0.04em' }}>
-                83.0<span style={{ fontSize: '32px', color: 'var(--teal)' }}>%</span>
+                {operationalHealth}<span style={{ fontSize: '32px', color: 'var(--teal)' }}>%</span>
               </div>
             </div>
             
@@ -69,11 +80,11 @@ export function OverviewView() {
             <div style={{ display: 'flex', gap: '40px', flex: 1 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div style={{ fontSize: 'var(--fs-11)', color: 'var(--txt-md)' }}>Spec Compliance</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', color: 'var(--green)' }}>97.2%</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', color: 'var(--green)' }}>{specCompliancePct}%</div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div style={{ fontSize: 'var(--fs-11)', color: 'var(--txt-md)' }}>Open Risks</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', color: 'var(--amber)' }}>12</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', color: openRisks > 0 ? 'var(--amber)' : 'var(--green)' }}>{openRisks}</div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div style={{ fontSize: 'var(--fs-11)', color: 'var(--txt-md)' }}>Critical Decisions</div>
@@ -239,26 +250,21 @@ export function OverviewView() {
                   <div className="audit__row head" style={{ gridTemplateColumns: '60px 120px 1fr', padding: '12px 8px', borderBottomColor: 'var(--line)' }}>
                     <div>Time</div><div>Agent</div><div>Activity</div>
                   </div>
-                  <div className="audit__row" style={{ gridTemplateColumns: '60px 120px 1fr', padding: '12px 8px', border: 'none' }}>
-                    <div className="audit__ts">11:43</div>
-                    <div className="audit__action">Schedule</div>
-                    <div className="audit__src">Risk recalculated based on TX-01 data</div>
-                  </div>
-                  <div className="audit__row" style={{ gridTemplateColumns: '60px 120px 1fr', padding: '12px 8px', border: 'none' }}>
-                    <div className="audit__ts">11:42</div>
-                    <div className="audit__action">Knowledge</div>
-                    <div className="audit__src">Identified NM-0 historical precedent</div>
-                  </div>
-                  <div className="audit__row" style={{ gridTemplateColumns: '60px 120px 1fr', padding: '12px 8px', border: 'none' }}>
-                    <div className="audit__ts">11:40</div>
-                    <div className="audit__action">Supply</div>
-                    <div className="audit__src">Vendor delay detected: 8 weeks</div>
-                  </div>
-                  <div className="audit__row" style={{ gridTemplateColumns: '60px 120px 1fr', padding: '12px 8px', border: 'none' }}>
-                    <div className="audit__ts">11:37</div>
-                    <div className="audit__action">Spec</div>
-                    <div className="audit__src">Deviation logged for review</div>
-                  </div>
+                  {auditEntries.length === 0 ? (
+                    <div style={{ padding: '16px', color: 'var(--txt-md)' }}>No system activity recorded yet.</div>
+                  ) : (
+                    auditEntries.slice(0, 5).map((entry, idx) => {
+                      const time = new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      const shortAgent = entry.actor.split(' ')[0].replace('Agent', '').replace('-', '');
+                      return (
+                        <div key={idx} className="audit__row" style={{ gridTemplateColumns: '60px 120px 1fr', padding: '12px 8px', border: 'none' }}>
+                          <div className="audit__ts">{time}</div>
+                          <div className="audit__action">{shortAgent}</div>
+                          <div className="audit__src" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.action} {entry.target}</div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </section>
 

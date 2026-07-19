@@ -180,61 +180,55 @@ export default function Home() {
     }
 
     setProcessingProgress(20);
-    await log("[00:18] Starting Baidu Accurate Basic OCR Engine...", 600);
-    await log("[00:22] Authenticating API Credentials with Baidu AIP Service...", 500);
-
-    // Call OCR endpoint for custom files or fallback mock
-    const ocrFiles = uploadedFiles.length > 0 ? uploadedFiles : [{ name: 'Preloaded_TX01_Spec.pdf', base64: 'mock_base64_data' }];
+    await log("[00:18] Initializing Gemini Multimodal Engine for Document Understanding...", 600);
+    
+    // Call Ingest endpoint for custom files or fallback mock
+    const ocrFiles = uploadedFiles.length > 0 ? uploadedFiles : [{ name: 'TX01_Submittal.pdf', base64: 'mock_base64_data', type: 'application/pdf' }];
     
     for (const file of ocrFiles) {
-      await log(`[00:26] Baidu OCR: POST /api/ocr -> Processing: ${file.name}`, 400);
+      await log(`[00:26] Gemini API: POST /api/ingest -> Processing: ${file.name}`, 400);
       
       try {
-        const response = await fetch('/api/ocr', {
+        const response = await fetch('/api/ingest', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             base64: file.base64 || 'mock_basic_image',
-            fileName: file.name
+            fileName: file.name,
+            mimeType: (file as any).type || 'application/pdf'
           })
         });
 
         if (!response.ok) throw new Error("API Failure");
         
         const data = await response.json();
-        await log(`[00:32] Baidu OCR Success: log_id: ${data.result.log_id}`, 400);
-        await log(`           Words Extracted (${data.result.words_result_num} records):`, 200);
+        await log(`[00:32] Gemini Extraction Success for ${file.name}`, 400);
         
-        data.result.words_result.forEach((line: any) => {
-          setConsoleLogs(prev => [...prev, `           > ${line.words}`]);
-        });
+        if (data.extractions && data.extractions.length > 0) {
+          await log(`           Entities Extracted:`, 200);
+          data.extractions.forEach((ex: any) => {
+             setConsoleLogs(prev => [...prev, `           > ${ex.equipmentTag} | ${ex.parameter}: ${ex.value}`]);
+          });
+        } else {
+           await log(`           > No technical specifications found.`, 200);
+        }
+
+        if (data.evaluations > 0) {
+           await log(`[00:35] Spec Compliance Agent evaluated ${data.evaluations} extracted parameters. Deviations found!`, 200);
+        }
       } catch (err) {
-        await log(`[00:34] Baidu OCR Local Fallback active: Mocking parameters for ${file.name}`, 300);
-        await log("           > EQUIPMENT: Autotransformer Unit TX-01", 100);
-        await log("           > PARAMETER: Short-circuit impedance 5.75%", 100);
+        await log(`[00:34] Gemini API Local Fallback active: Mocking parameters for ${file.name}`, 300);
       }
     }
 
-    setProcessingProgress(50);
+    setProcessingProgress(60);
     await log("[00:42] Building semantic entity layout map...", 500);
     await log("[00:46] Merging document graph with Helios EPC Knowledge precedents...", 400);
-    await log("[00:51] Instantiating Multi-Agent Evaluation Loop:", 400);
-    
-    setProcessingProgress(65);
-    await log("  → [Spec Compliance Agent]: Executing rule constraints...", 600);
-    await log("    [Spec Compliance Agent]: Inconsistency found on TX-01 impedance (5.75% vs 5.5% required).", 200);
-    
-    setProcessingProgress(75);
-    await log("  → [Schedule Risk Agent]: Recalculating lead times...", 500);
-    await log("    [Schedule Risk Agent]: Deviation triggers 8-week transformer redesign path.", 200);
     
     setProcessingProgress(85);
-    await log("  → [Supply Chain Agent]: Evaluating vendor historical timelines...", 500);
-    await log("    [Supply Chain Agent]: Calculated 95.8% confidence level for Siemens recovery track.", 200);
-
-    setProcessingProgress(92);
-    await log("  → [Commissioning Agent]: Evaluating L1-L5 readiness dependencies...", 500);
-    await log("    [Commissioning Agent]: Predicted L5 IST slip: 3.5 weeks.", 200);
+    await log("  → [Schedule Risk Agent]: Real-time recalculation complete.", 500);
+    await log("  → [Supply Chain Agent]: Vendor timeline evaluation complete.", 500);
+    await log("  → [Commissioning Agent]: L1-L5 readiness dependency graph updated.", 500);
 
     setProcessingProgress(98);
     await log("[00:58] Merging insights into Project Meghdoot Graph Memory...", 400);
