@@ -1,0 +1,530 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { useWorkspace } from '@/core/state/workspace';
+
+interface UploadedFile {
+  id: string;
+  name: string;
+  size: number;
+  progress: number;
+  status: 'uploading' | 'completed' | 'failed';
+  category: string;
+  base64?: string;
+}
+
+type OnboardingStep = 'WORKSPACE' | 'UPLOAD' | 'PROCESSING';
+
+export default function Home() {
+  const router = useRouter();
+  const setProjectInitialized = useWorkspace((s) => s.setProjectInitialized);
+  const [step, setStep] = useState<OnboardingStep>('WORKSPACE');
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [systemFiles, setSystemFiles] = useState<{name: string, path: string}[]>([]);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch('/api/repository?action=tree')
+      .then(res => res.json())
+      .then(data => {
+        if (data.tree && Array.isArray(data.tree)) {
+          // Flatten tree to get just files
+          const files: {name: string, path: string}[] = [];
+          const extract = (node: any) => {
+            if (node.type === 'file') {
+              files.push({ name: node.name, path: node.path });
+            } else if (node.children && Array.isArray(node.children)) {
+              node.children.forEach(extract);
+            }
+          };
+          data.tree.forEach(extract);
+          setSystemFiles(files.filter(f => f.name.endsWith('.md')));
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  // AI Processing state
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
+  const [logsComplete, setLogsComplete] = useState(false);
+  const logTerminalRef = useRef<HTMLDivElement>(null);
+
+  // Category counts
+  const [categories, setCategories] = useState({
+    'Specifications': 18,
+    'Vendor Submittals': 46,
+    'Drawings': 123,
+    'RFIs': 14,
+    'Commissioning Docs': 67,
+    'Quality Records': 31,
+  });
+
+  // Category mapping based on file extension/name keywords
+  const detectCategory = (filename: string): string => {
+    const lower = filename.toLowerCase();
+    if (lower.includes('spec') || lower.includes('require')) return 'Specifications';
+    if (lower.includes('submittal') || lower.includes('vendor') || lower.includes('quote')) return 'Vendor Submittals';
+    if (lower.includes('dwg') || lower.includes('drawing') || lower.includes('layout')) return 'Drawings';
+    if (lower.includes('rfi') || lower.includes('query')) return 'RFIs';
+    if (lower.includes('cx') || lower.includes('commissioning') || lower.includes('test')) return 'Commissioning Docs';
+    return 'Quality Records';
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      processSelectedFiles(Array.from(e.target.files));
+    }
+  };
+
+  const processSelectedFiles = (files: File[]) => {
+    files.forEach(file => {
+      const fileId = Math.random().toString(36).substring(7);
+      const category = detectCategory(file.name);
+      
+      const newFile: UploadedFile = {
+        id: fileId,
+        name: file.name,
+        size: file.size,
+        progress: 0,
+        status: 'uploading',
+        category
+      };
+
+      setUploadedFiles(prev => [...prev, newFile]);
+
+      // Read file to Base64 to pass to OCR API later
+      const reader = new FileReader();
+      reader.onload = () => {
+        setUploadedFiles(prev => prev.map(f => f.id === fileId ? { ...f, base64: reader.result as string } : f));
+      };
+      reader.readAsDataURL(file);
+
+      // Simulate realistic upload progress based on file size
+      let uploadProgress = 0;
+      const speed = Math.max(50000, Math.floor(Math.random() * 200000)); // bytes per interval
+      const duration = Math.min(3000, Math.max(800, (file.size / speed) * 100));
+      const intervalTime = 100;
+      const stepValue = 100 / (duration / intervalTime);
+
+      const interval = setInterval(() => {
+        uploadProgress += stepValue;
+        if (uploadProgress >= 100) {
+          uploadProgress = 100;
+          clearInterval(interval);
+          setUploadedFiles(prev => prev.map(f => f.id === fileId ? { ...f, progress: 100, status: 'completed' } : f));
+          
+          // Increment the category count in UI
+          setCategories(prev => ({
+            ...prev,
+            [category]: prev[category as keyof typeof prev] + 1
+          }));
+        } else {
+          setUploadedFiles(prev => prev.map(f => f.id === fileId ? { ...f, progress: Math.floor(uploadProgress) } : f));
+        }
+      }, intervalTime);
+    });
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      processSelectedFiles(Array.from(e.dataTransfer.files));
+    }
+  };
+
+  // Scroll logs terminal automatically
+  useEffect(() => {
+    if (logTerminalRef.current) {
+      logTerminalRef.current.scrollTop = logTerminalRef.current.scrollHeight;
+    }
+  }, [consoleLogs]);
+
+  // AI Processing Simulation & Live API Execution
+  const runAiPipeline = async () => {
+    setStep('PROCESSING');
+    setConsoleLogs(["[00:01] Ingesting connected project documents..."]);
+
+    const log = (msg: string, delay: number) => {
+      return new Promise<void>(resolve => {
+        setTimeout(() => {
+          setConsoleLogs(prev => [...prev, msg]);
+          resolve();
+        }, delay);
+      });
+    };
+
+    await log("[00:03] Loading project context: Prometheus (NM-1)", 400);
+    await log(`[00:06] Found ${Object.values(categories).reduce((a, b) => a + b, 0)} registered documents in database.`, 300);
+    
+    // Upload files processing
+    if (uploadedFiles.length > 0) {
+      await log(`[00:09] Initializing ingestion of ${uploadedFiles.length} user-uploaded documents...`, 400);
+      for (const file of uploadedFiles) {
+        await log(`[00:12] Ingesting: ${file.name} (${(file.size / 1024).toFixed(1)} KB) -> [${file.category}]`, 300);
+      }
+    }
+
+    setProcessingProgress(20);
+    await log("[00:18] Starting Baidu Accurate Basic OCR Engine...", 600);
+    await log("[00:22] Authenticating API Credentials with Baidu AIP Service...", 500);
+
+    // Call OCR endpoint for custom files or fallback mock
+    const ocrFiles = uploadedFiles.length > 0 ? uploadedFiles : [{ name: 'Preloaded_TX01_Spec.pdf', base64: 'mock_base64_data' }];
+    
+    for (const file of ocrFiles) {
+      await log(`[00:26] Baidu OCR: POST /api/ocr -> Processing: ${file.name}`, 400);
+      
+      try {
+        const response = await fetch('/api/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            base64: file.base64 || 'mock_basic_image',
+            fileName: file.name
+          })
+        });
+
+        if (!response.ok) throw new Error("API Failure");
+        
+        const data = await response.json();
+        await log(`[00:32] Baidu OCR Success: log_id: ${data.result.log_id}`, 400);
+        await log(`           Words Extracted (${data.result.words_result_num} records):`, 200);
+        
+        data.result.words_result.forEach((line: any) => {
+          setConsoleLogs(prev => [...prev, `           > ${line.words}`]);
+        });
+      } catch (err) {
+        await log(`[00:34] Baidu OCR Local Fallback active: Mocking parameters for ${file.name}`, 300);
+        await log("           > EQUIPMENT: Autotransformer Unit TX-01", 100);
+        await log("           > PARAMETER: Short-circuit impedance 5.75%", 100);
+      }
+    }
+
+    setProcessingProgress(50);
+    await log("[00:42] Building semantic entity layout map...", 500);
+    await log("[00:46] Merging document graph with Helios EPC Knowledge precedents...", 400);
+    await log("[00:51] Instantiating Multi-Agent Evaluation Loop:", 400);
+    
+    setProcessingProgress(65);
+    await log("  → [Spec Compliance Agent]: Executing rule constraints...", 600);
+    await log("    [Spec Compliance Agent]: Inconsistency found on TX-01 impedance (5.75% vs 5.5% required).", 200);
+    
+    setProcessingProgress(75);
+    await log("  → [Schedule Risk Agent]: Recalculating lead times...", 500);
+    await log("    [Schedule Risk Agent]: Deviation triggers 8-week transformer redesign path.", 200);
+    
+    setProcessingProgress(85);
+    await log("  → [Supply Chain Agent]: Evaluating vendor historical timelines...", 500);
+    await log("    [Supply Chain Agent]: Calculated 95.8% confidence level for Siemens recovery track.", 200);
+
+    setProcessingProgress(92);
+    await log("  → [Commissioning Agent]: Evaluating L1-L5 readiness dependencies...", 500);
+    await log("    [Commissioning Agent]: Predicted L5 IST slip: 3.5 weeks.", 200);
+
+    setProcessingProgress(98);
+    await log("[00:58] Merging insights into Project Meghdoot Graph Memory...", 400);
+    await log("[01:00] Ingestion sequence complete. Initializing Mission Control...", 400);
+    
+    setProcessingProgress(100);
+    setLogsComplete(true);
+    setProjectInitialized(true);
+
+    setTimeout(() => {
+      router.push('/overview');
+    }, 1200);
+  };
+
+  if (step === 'WORKSPACE') {
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '32px 64px', background: 'var(--bg-0)', alignItems: 'center', overflowY: 'auto', width: '100%' }}>
+        <div style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0 32px 0', gap: '24px' }}>
+            <img src="/prometheus_logo.png" alt="PROMETHEUS" style={{ height: '180px', objectFit: 'contain', filter: 'drop-shadow(0 0 32px rgba(0, 240, 255, 0.15))' }} />
+            <div style={{ 
+              fontFamily: 'var(--font-mono)', 
+              fontSize: '14px', 
+              color: 'var(--teal)', 
+              textTransform: 'uppercase', 
+              letterSpacing: '0.15em',
+              fontWeight: 400,
+              textAlign: 'center',
+              textShadow: '0 0 12px rgba(0, 240, 255, 0.25)'
+            }}>
+              The Execution Intelligence Layer for Data Centre EPC Project Delivery
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <h2 style={{ fontSize: 'var(--fs-12)', color: 'var(--txt-lo)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Recent Projects</h2>
+            
+            <div 
+              onClick={() => setStep('UPLOAD')}
+              style={{ 
+                border: '1px solid var(--line-strong)', 
+                padding: '32px', 
+                cursor: 'pointer',
+                background: 'var(--bg-1)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+                transition: 'border-color 0.2s ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--teal)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--line-strong)'}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '24px', color: 'var(--txt-hi)', fontWeight: 300 }}>Project Meghdoot (NM-1)</span>
+                <span className="badge badge--success" style={{ background: 'var(--teal-dim)', color: 'var(--teal)' }}>Active</span>
+              </div>
+              <div style={{ display: 'flex', gap: '24px', fontSize: 'var(--fs-11)', color: 'var(--txt-md)', fontFamily: 'var(--font-mono)' }}>
+                <span>ID: PRJ-992</span>
+                <span>Location: Navi Mumbai, India</span>
+                <span>Type: Hyperscale Data Center</span>
+              </div>
+            </div>
+
+            <div 
+              style={{ 
+                border: '1px solid var(--line)', 
+                padding: '32px', 
+                cursor: 'not-allowed',
+                background: 'var(--bg-0)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+                opacity: 0.6
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '24px', color: 'var(--txt-md)', fontWeight: 300 }}>Project Vayu (BLR-2)</span>
+                <span className="badge" style={{ background: 'var(--bg-1)', color: 'var(--txt-lo)', border: '1px solid var(--line-strong)' }}>Archived</span>
+              </div>
+              <div style={{ display: 'flex', gap: '24px', fontSize: 'var(--fs-11)', color: 'var(--txt-lo)', fontFamily: 'var(--font-mono)' }}>
+                <span>ID: PRJ-401</span>
+                <span>Location: Bangalore, India</span>
+                <span>Type: Telecom Hub</span>
+              </div>
+            </div>
+
+            <button className="btn" style={{ alignSelf: 'flex-start', borderStyle: 'dashed' }}>
+              + Create New Project
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'UPLOAD') {
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '64px', background: 'var(--bg-0)', alignItems: 'center', overflowY: 'auto', width: '100%' }}>
+        <div style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '48px' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <button className="btn" onClick={() => setStep('WORKSPACE')}>← Back</button>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-10)', color: 'var(--txt-lo)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+              Project Data Sources · Prometheus
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            <h1 style={{ fontSize: '32px', color: 'var(--txt-hi)', fontWeight: 300, letterSpacing: '-0.02em' }}>Upload & Connect Data</h1>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}>
+              {Object.entries(categories).map(([label, count]) => (
+                <div key={label} style={{ border: '1px solid var(--line)', padding: '20px', background: 'var(--bg-1)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <span style={{ fontSize: 'var(--fs-11)', color: 'var(--txt-md)' }}>{label}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '24px', color: 'var(--teal)' }}>{count} <span style={{ fontSize: 'var(--fs-11)' }}>Files</span></span>
+                </div>
+              ))}
+            </div>
+
+            {/* Drag & Drop uploader */}
+            <div 
+              onDragEnter={handleDrag}
+              onDragOver={handleDrag}
+              onDragLeave={handleDrag}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              style={{ 
+                border: dragActive ? '1px dashed var(--teal)' : '1px dashed var(--line-strong)', 
+                padding: '64px', 
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                cursor: 'pointer',
+                background: dragActive ? 'var(--teal-dim)' : 'transparent',
+                gap: '16px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                multiple 
+                style={{ display: 'none' }} 
+                onChange={handleFileChange}
+              />
+              <span style={{ fontSize: '24px', color: 'var(--txt-md)' }}>Drag new project documents here</span>
+              <span style={{ fontSize: 'var(--fs-12)', color: 'var(--txt-lo)' }}>Supports PDF, DWG, XLSX, DOCX (Max 2GB per file)</span>
+              <button className="btn" style={{ marginTop: '16px' }} onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
+                Browse Files
+              </button>
+            </div>
+
+            {/* List of uploaded files with real progress */}
+            {(uploadedFiles.length > 0 || systemFiles.length > 0) && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '1px solid var(--line)', paddingTop: '24px' }}>
+                <h3 style={{ fontSize: 'var(--fs-12)', color: 'var(--txt-lo)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Project Documents Queue
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '320px', overflowY: 'auto', paddingRight: '12px' }}>
+                  
+                  {/* Uploaded Files */}
+                  {uploadedFiles.map(file => (
+                    <div key={file.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg-1)', border: '1px solid var(--teal-line)' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, marginRight: '24px', overflow: 'hidden' }}>
+                        <span style={{ fontSize: 'var(--fs-13)', color: 'var(--txt-hi)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{file.name}</span>
+                        <div style={{ display: 'flex', gap: '12px', fontSize: 'var(--fs-11)', color: 'var(--teal)', fontFamily: 'var(--font-mono)' }}>
+                          <span>{(file.size / 1024).toFixed(1)} KB</span>
+                          <span>Category: {file.category}</span>
+                          <span>[USER UPLOAD]</span>
+                        </div>
+                      </div>
+                      
+                      <div style={{ width: '120px', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                        <div style={{ fontSize: 'var(--fs-11)', fontFamily: 'var(--font-mono)', color: file.status === 'completed' ? 'var(--teal)' : 'var(--txt-md)' }}>
+                          {file.status === 'completed' ? 'Ready' : `${file.progress}%`}
+                        </div>
+                        <div style={{ width: '100%', height: '2px', background: 'var(--line-strong)', position: 'relative' }}>
+                          <div style={{ 
+                            position: 'absolute', 
+                            left: 0, 
+                            top: 0, 
+                            bottom: 0, 
+                            background: 'var(--teal)', 
+                            width: `${file.progress}%`,
+                            transition: 'width 0.2s ease-out'
+                          }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Preloaded System Files */}
+                  {systemFiles.map((file, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg-1)', border: '1px solid var(--line)' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, marginRight: '24px', overflow: 'hidden' }}>
+                        <span style={{ fontSize: 'var(--fs-13)', color: 'var(--txt-hi)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{file.name}</span>
+                        <div style={{ display: 'flex', gap: '12px', fontSize: 'var(--fs-11)', color: 'var(--txt-lo)', fontFamily: 'var(--font-mono)' }}>
+                          <span>Preloaded</span>
+                          <span>Category: {detectCategory(file.name)}</span>
+                        </div>
+                      </div>
+                      
+                      <div style={{ width: '120px', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                        <div style={{ fontSize: 'var(--fs-11)', fontFamily: 'var(--font-mono)', color: 'var(--txt-md)' }}>
+                          Ready
+                        </div>
+                        <div style={{ width: '100%', height: '2px', background: 'var(--line-strong)', position: 'relative' }}>
+                          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: 'var(--txt-lo)', width: '100%' }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                </div>
+              </div>
+            )}
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px', borderTop: '1px solid var(--line)', paddingTop: '32px' }}>
+              <button className="btn btn--approve" style={{ padding: '16px 32px', fontSize: 'var(--fs-14)' }} onClick={runAiPipeline}>
+                Initialize AI Processing
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '64px', background: 'var(--bg-0)', alignItems: 'center', justifyContent: 'center', overflowY: 'auto', width: '100%' }}>
+      <div style={{ width: '100%', maxWidth: '700px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-10)', color: 'var(--teal)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+              System Processing
+            </div>
+            <h1 style={{ fontSize: '32px', color: 'var(--txt-hi)', fontWeight: 300, letterSpacing: '-0.02em' }}>
+              Ingesting Project Data
+            </h1>
+          </div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '24px', color: 'var(--teal)' }}>
+            {processingProgress}%
+          </div>
+        </div>
+
+        {/* Live log Terminal */}
+        <div 
+          ref={logTerminalRef}
+          style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '8px', 
+            background: '#090d16', 
+            padding: '24px', 
+            border: '1px solid var(--line-strong)', 
+            fontFamily: 'var(--font-mono)', 
+            fontSize: 'var(--fs-11)',
+            height: '320px',
+            overflowY: 'auto',
+            borderRadius: '4px',
+            boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.5)'
+          }}
+        >
+          {consoleLogs.map((logMsg, idx) => (
+            <div key={idx} style={{ 
+              color: logMsg.includes('Baidu OCR Success') ? 'var(--green)' : logMsg.includes('Agent') ? 'var(--teal)' : 'var(--txt-md)',
+              whiteSpace: 'pre-wrap'
+            }}>
+              {logMsg}
+            </div>
+          ))}
+          {!logsComplete && <div className="blink" style={{ color: 'var(--teal)', marginTop: '4px' }}>_</div>}
+        </div>
+
+        {/* Real Loading Bar */}
+        <div style={{ height: '4px', background: 'var(--line-strong)', width: '100%', overflow: 'hidden' }}>
+          <div style={{ 
+            height: '100%', 
+            background: 'var(--teal)', 
+            width: `${processingProgress}%`,
+            transition: 'width 0.4s ease-out'
+          }} />
+        </div>
+      </div>
+      <style>{`
+        .blink { animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+      `}</style>
+    </div>
+  );
+}

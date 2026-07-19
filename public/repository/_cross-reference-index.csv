@@ -1,0 +1,37 @@
+source_doc,relationship,target_doc_or_entity,note
+MGD-ATL-EL-DBR-0002,defines_design_for,MGD-ATL-EL-SPC-0012,UPS spec derived from DBR
+MGD-ATL-EL-SPC-0012,revised_by,MGD-ATL-CO-VO-0011,VRLA to Li-ion change (Rev B to C)
+MGD-ATL-EL-SPC-0012,clarified_by,MGD-ATL-EL-RFI-0052,fault level and earthing
+MGD-ATL-EL-RFI-0052,results_in,MGD-ATL-EL-SI-0044,clean-earth bonding site instruction
+MGD-ATL-EL-SI-0044,adds_cable,C-DH1-EARTH1,earth cable in MGD-ATL-EL-CBS-0004
+MGD-ATL-CO-VO-0011,costed_in,MGD-ATL-CO-CIA-0011,+INR 2.9 Cr
+MGD-ATL-CO-VO-0011,triggers,MGD-ATL-PR-MAR-0044,Li-ion material approval
+MGD-ATL-EL-SPC-0012,sized_by,MGD-ATL-EL-CAL-0007,UPS/load sizing calc
+MGD-ATL-EL-SPC-0012,procured_via,MGD-ATL-PR-0031,purchase requisition
+MGD-ATL-PR-0031,evaluated_by,MGD-ATL-PR-TBE-0031,technical bid eval
+MGD-ATL-PR-TBE-0031,rejects,Nimbus Energy Systems,efficiency 96.0 pct non-compliant
+MGD-ATL-PR-TBE-0031,leads_to,MGD-ATL-PR-CBE-0031,commercial bid eval
+MGD-ATL-PR-CBE-0031,awards,MGD-ATL-PO-0012,PO to Meridian Critical Power
+MGD-ATL-PO-0012,supplied_by,Meridian Critical Power,vendor code MCP
+MGD-ATL-PO-0012,covers_equipment,UPS-01..UPS-12;BAT-01..BAT-12;STS-01..STS-16,tags
+MGD-ATL-PO-0012,submittal,MGD-MCP-EL-VDS-0012,vendor data sheet
+MGD-MCP-EL-VDS-0012,comment_becomes,MGD-ATL-QA-NCR-0037,seismic anchoring comment 2
+MGD-ATL-QA-ITP-0009,governs_test,MGD-MCP-CX-FAT-0012,ITP item 7 hold point
+MGD-MCP-CX-FAT-0012,raises,MGD-ATL-QA-NCR-0037,anchoring FAIL at FAT L1
+MGD-ATL-QA-NCR-0037,dispositioned_by,MGD-ATL-QA-CAR-0037,rework + root cause
+MGD-ATL-QA-CAR-0037,enables,MGD-ATL-QA-IRN-0028,inspection release note
+MGD-ATL-QA-IRN-0028,releases_payment,MGD-ATL-CO-PAY-0001,70 pct milestone P2
+MGD-ATL-QA-IRN-0028,followed_by,MGD-ATL-QA-MIR-0031,delivery inspection L2
+MGD-ATL-QA-MIR-0031,handover_to,MGD-OHM-EL-MS-0015,install method statement
+MGD-OHM-EL-MS-0015,verified_by,MGD-OHM-EL-CHK-0015,installation checklist
+MGD-OHM-EL-MS-0015,ready_for,MGD-NBC-CX-PCC-0012,L3 pre-commissioning
+MGD-NBC-CX-PCC-0012,precedes,MGD-NBC-CX-SAT-0012,L4 SAT
+MGD-NBC-CX-SAT-0012,records,MGD-ATL-QA-PUN-0003,punch P03/P05
+MGD-NBC-CX-SAT-0012,precedes,MGD-NBC-CX-IST-0002,L5 IST plan
+MGD-NBC-CX-SAT-0012,certified_by,MGD-NBC-CX-CER-0012,commissioning certificate
+MGD-NBC-CX-DEF-0005,blocks,MGD-NBC-CX-IST-0002,DEF-01/DEF-03 EPMS integration
+MGD-NBC-CX-DEF-0005,escalated_via,MGD-ATL-PM-DLR-0001,delay D-07
+MGD-ATL-PM-DLR-0001,linked_risk,MGD-ATL-PM-RSK-0001,R-011 BMS/EPMS
+MGD-ATL-KM-KB-0001,precedent_for,MGD-ATL-QA-NCR-0037,H-NCR-221 Project Cygnus
+MGD-ATL-KM-KB-0001,flags_vendor_risk,OrbitControls Automation,recurring integration slippage
+MGD-ATL-PM-LL-0001,derived_from,MGD-ATL-QA-NCR-0037,lessons LL-05/LL-06

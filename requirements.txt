@@ -1,0 +1,20 @@
+# PROMETHEUS System Requirements
+
+# Environment
+Node.js >= 18.17.0 (v20+ recommended)
+npm >= 9.x.x
+
+# OS Compatibility
+# The application is OS-agnostic and will run on:
+# - Windows Server 2019/2022
+# - Ubuntu 20.04/22.04 LTS
+# - macOS 12+
+
+# Recommended Hardware Minimums (Server)
+# CPU: 2 Cores
+# RAM: 4GB
+# Disk: 10GB Available
+
+# Note: As this is a modern TypeScript/Next.js application, all specific
+# package dependencies are managed via package.json.
+# Run `npm install` to resolve all software dependencies.
