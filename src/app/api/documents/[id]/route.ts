@@ -1,10 +1,8 @@
-import { getDocument } from '@/server/graph/tools';
+import { NextResponse } from 'next/server';
+import { getStore, deleteDocument } from '@/server/store';
 
-export const dynamic = 'force-dynamic';
-
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const { id } = await ctx.params;
-  const doc = getDocument(id);
-  if (!doc) return Response.json({ error: `Unknown document: ${id}` }, { status: 404 });
-  return Response.json({ document: doc });
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
+  deleteDocument(id);
+  return NextResponse.json({ success: true });
 }

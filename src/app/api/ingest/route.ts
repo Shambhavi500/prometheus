@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { extractDocumentSpecifications } from '@/core/utils/ai';
-import { getStore, makeIds, ingestDynamicSpec, ingestDynamicFinding } from '@/server/store';
+import { getStore, makeIds, ingestDynamicSpec, ingestDynamicFinding, uploadDocument, updateDocumentStatus } from '@/server/store';
 import { evaluateDynamicExtraction } from '@/server/reasoning/spec-compliance';
 import { evaluateDynamicScheduleRisk } from '@/server/reasoning/schedule-risk';
 import { evaluateDynamicSupplyRisk } from '@/server/reasoning/supply-chain';
@@ -57,6 +57,8 @@ export async function POST(request: Request) {
         const docPrefix = fileName.split('.')[0].toUpperCase();
         const submittalTag = `SUB-${docPrefix.substring(0, 8)}`;
         const docId = `DOC-${docPrefix.substring(0, 8)}`;
+        
+        uploadDocument(docId, fileName, mimeType || 'application/pdf');
 
         if (!store.graph.getNode(docId)) {
           store.graph.addNode({
@@ -69,7 +71,8 @@ export async function POST(request: Request) {
             verification: 'SystemVerified',
             tenantId: store.user.tenantId,
             projectId: 'PRJ-AQUILA',
-            props: {}
+            props: {},
+            source: 'live',
           });
         }
 
@@ -82,7 +85,7 @@ export async function POST(request: Request) {
             send(`           > ${spec.equipmentTag} | ${spec.parameter}: ${spec.value}`);
             const evaluation = evaluateDynamicExtraction(spec, submittalTag, docId, store.graph, ids);
             if (evaluation) {
-              ingestDynamicSpec(evaluation.row, evaluation.finding, evaluation.decision);
+              ingestDynamicSpec(evaluation.row, evaluation.finding, evaluation.decision, docId);
               evaluationsCount++;
             }
           }
@@ -95,7 +98,7 @@ export async function POST(request: Request) {
           for (const sched of extractedData.schedules) {
             const evaluation = evaluateDynamicScheduleRisk(sched, docId, store.graph, ids);
             if (evaluation) {
-              ingestDynamicFinding(evaluation.finding, evaluation.decision);
+              ingestDynamicFinding(evaluation.finding, evaluation.decision, docId);
               evaluationsCount++;
             }
           }
@@ -105,7 +108,7 @@ export async function POST(request: Request) {
           for (const sup of extractedData.supply) {
             const evaluation = evaluateDynamicSupplyRisk(sup, docId, store.graph, ids);
             if (evaluation) {
-              ingestDynamicFinding(evaluation.finding, evaluation.decision);
+              ingestDynamicFinding(evaluation.finding, evaluation.decision, docId);
               evaluationsCount++;
             }
           }
@@ -115,7 +118,7 @@ export async function POST(request: Request) {
           for (const test of extractedData.tests) {
             const evaluation = evaluateDynamicCommissioningRisk(test, docId, store.graph, ids);
             if (evaluation) {
-              ingestDynamicFinding(evaluation.finding, evaluation.decision);
+              ingestDynamicFinding(evaluation.finding, evaluation.decision, docId);
               evaluationsCount++;
             }
           }
@@ -131,7 +134,7 @@ export async function POST(request: Request) {
         // Layer 2 Vector Store Extraction
         try {
           const { GoogleGenAI } = require('@google/genai');
-          const ai = new GoogleGenAI({});
+          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
           const cleanBase64 = base64.includes(',') ? base64.split(',')[1] : base64;
           const textRes = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -176,6 +179,8 @@ export async function POST(request: Request) {
         sendProgress(98);
         send("[00:58] Merging insights into Project Meghdoot Graph Memory...");
         send("[01:00] Ingestion sequence complete. Initializing Mission Control...");
+        
+        updateDocumentStatus(docId, 'Processed');
         
         sendProgress(100);
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));

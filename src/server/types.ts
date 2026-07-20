@@ -9,6 +9,19 @@ import type { Citation } from '@prometheus/ontology';
 export type Severity = 'Critical' | 'High' | 'Medium' | 'Low';
 export type Verdict = 'Compliant' | 'Deviation' | 'Data Gap';
 
+export interface UploadedDocument {
+  id: string;
+  name: string;
+  uploadedAt: string; // ISO
+  status: 'Processing' | 'Processed' | 'Failed';
+  type: string;
+  source: 'live';
+  findingsCount: number;
+  decisionsCount: number;
+  evidenceCount: number;
+  graphNodesCount: number;
+}
+
 export interface TraceStep {
   index: number;
   total: number;
@@ -85,6 +98,9 @@ export interface Finding {
   riskId: string;
   decisionId: string;
   cascade?: CascadeResult;
+  source?: 'baseline' | 'live';
+  timestamp?: string;
+  documentId?: string;
 }
 
 export type DecisionStatus = 'Pending' | 'Signed' | 'Rejected';
@@ -104,6 +120,9 @@ export interface DecisionRecord {
   signedAt?: string; // ISO
   rationale?: string;
   writeBack?: { system: string; message: string };
+  source?: 'baseline' | 'live';
+  timestamp?: string;
+  documentId?: string;
 }
 
 export interface AuditEntry {

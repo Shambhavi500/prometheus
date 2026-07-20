@@ -2,8 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { Type, Schema } from '@google/genai';
 
 // Make sure to set GEMINI_API_KEY in your environment
-// The SDK automatically picks up GEMINI_API_KEY from process.env
-const ai = new GoogleGenAI({});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export interface ExtractedSpec {
   equipmentTag: string;

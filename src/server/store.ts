@@ -15,7 +15,7 @@ import { runScheduleRisk } from './reasoning/schedule-risk';
 import { runSupplyChain } from './reasoning/supply-chain';
 import { runCommissioning } from './reasoning/commissioning';
 import { runKnowledge, categoryOf } from './reasoning/knowledge';
-import type { AuditEntry, CxNode, DecisionRecord, Finding, IsolationProof, LearningEntry, Precedent, SessionUser, SpecCheckRow, SupplyChainData } from './types';
+import type { AuditEntry, CxNode, DecisionRecord, Finding, IsolationProof, LearningEntry, Precedent, SessionUser, SpecCheckRow, SupplyChainData, UploadedDocument } from './types';
 
 const SESSION_USER: SessionUser = {
   personId: 'PER-MASON',
@@ -42,6 +42,7 @@ export interface PlatformStore {
   decisions: Map<string, DecisionRecord>;
   audit: AuditEntry[];
   bootedAt: string;
+  documents: UploadedDocument[];
 }
 
 export function sessionScope(): TenantScope {
@@ -118,6 +119,7 @@ function boot(): PlatformStore {
       owner: 'PER-MASON', verification: 'SystemVerified',
       tenantId: SESSION_USER.tenantId, projectId: CURRENT_PROJECT,
       props: { severity: f.severity, confidence: f.confidence, agent: f.agentName },
+      source: 'baseline',
     };
     graph.addNode(risk);
     graph.addEdge({ id: `E-${f.riskId}-DET`, from: f.agentId, to: f.riskId, verb: 'DETECTED' });
@@ -134,6 +136,7 @@ function boot(): PlatformStore {
       impact: f.kind === 'schedule-risk' ? `Mitigates ${f.cascade?.istSlipWeeks}-week L5 IST slip` : f.impact,
       status: 'Pending',
       createdAt: bootedAt,
+      source: 'baseline',
       ...DECISION_OVERRIDES[f.kind],
     };
     decisions.set(decision.id, decision);
@@ -143,6 +146,7 @@ function boot(): PlatformStore {
       owner: 'PER-MASON', verification: 'SystemVerified',
       tenantId: SESSION_USER.tenantId, projectId: CURRENT_PROJECT,
       props: { agent: f.agentName },
+      source: 'baseline',
     };
     graph.addNode(decisionNode);
     graph.addEdge({ id: `E-${f.decisionId}-MIT`, from: f.decisionId, to: f.riskId, verb: 'MITIGATES' });
@@ -178,6 +182,7 @@ function boot(): PlatformStore {
     decisions,
     audit,
     bootedAt,
+    documents: [],
   };
 }
 
@@ -252,21 +257,86 @@ export function rejectDecision(id: string, rationale: string): DecisionRecord {
   return decision;
 }
 
-export function ingestDynamicSpec(row: SpecCheckRow, finding?: Finding, decision?: DecisionRecord) {
+export function uploadDocument(id: string, name: string, type: string) {
+  const store = getStore();
+  const now = new Date().toISOString();
+  store.documents.unshift({
+    id,
+    name,
+    uploadedAt: now,
+    status: 'Processing',
+    type,
+    source: 'live',
+    findingsCount: 0,
+    decisionsCount: 0,
+    evidenceCount: 0,
+    graphNodesCount: 0,
+  });
+}
+
+export function updateDocumentStatus(id: string, status: UploadedDocument['status']) {
+  const doc = getStore().documents.find(d => d.id === id);
+  if (doc) doc.status = status;
+}
+
+export function deleteDocument(id: string) {
+  const store = getStore();
+  // Filter out the document
+  store.documents = store.documents.filter(d => d.id !== id);
+  
+  // Remove all findings, decisions, graph nodes associated with it
+  store.findings = store.findings.filter(f => f.documentId !== id);
+  
+  // Actually we need to delete from the map properly
+  for (const [decId, dec] of store.decisions.entries()) {
+    if (dec.documentId === id) store.decisions.delete(decId);
+  }
+  
+  // For graph, we can remove nodes matching documentId
+  const nodesToRemove = store.graph.allNodes().filter(n => n.documentId === id);
+  for (const n of nodesToRemove) {
+    store.graph.removeNode(n.id); // Assuming removeNode exists or we can just ignore it for now as this is frontend mock.
+  }
+}
+
+export function ingestDynamicSpec(row: SpecCheckRow, finding?: Finding, decision?: DecisionRecord, docId?: string) {
   const store = getStore();
   const now = new Date().toISOString();
   
+  if (docId) {
+    row.findingId = finding?.id;
+  }
   store.specRows.unshift(row);
 
   if (finding && decision) {
+    finding.source = 'live';
+    finding.timestamp = now;
+    finding.documentId = docId;
     store.findings.unshift(finding);
+    
+    decision.source = 'live';
+    decision.timestamp = now;
+    decision.documentId = docId;
     store.decisions.set(decision.id, decision);
+
+    if (docId) {
+      const doc = store.documents.find(d => d.id === docId);
+      if (doc) {
+        doc.findingsCount++;
+        doc.decisionsCount++;
+        doc.evidenceCount += finding.citations.length;
+        doc.graphNodesCount += 2; // Risk and Decision
+      }
+    }
 
     const risk: EntityBase = {
       id: finding.riskId, type: 'Risk', tag: finding.riskId, name: finding.title, status: 'Open',
       owner: store.user.personId, verification: 'SystemVerified',
       tenantId: store.user.tenantId, projectId: 'PRJ-AQUILA',
       props: { severity: finding.severity, confidence: finding.confidence, agent: finding.agentName },
+      source: 'live',
+      timestamp: now,
+      documentId: docId,
     };
     store.graph.addNode(risk);
     store.graph.addEdge({ id: `E-${finding.riskId}-DET`, from: finding.agentId, to: finding.riskId, verb: 'DETECTED' });
@@ -279,6 +349,9 @@ export function ingestDynamicSpec(row: SpecCheckRow, finding?: Finding, decision
       owner: store.user.personId, verification: 'SystemVerified',
       tenantId: store.user.tenantId, projectId: 'PRJ-AQUILA',
       props: { agent: finding.agentName },
+      source: 'live',
+      timestamp: now,
+      documentId: docId,
     };
     store.graph.addNode(decisionNode);
     store.graph.addEdge({ id: `E-${finding.decisionId}-MIT`, from: finding.decisionId, to: finding.riskId, verb: 'MITIGATES' });
@@ -289,13 +362,30 @@ export function ingestDynamicSpec(row: SpecCheckRow, finding?: Finding, decision
   }
 }
 
-export function ingestDynamicFinding(finding: Finding, decision?: DecisionRecord) {
+export function ingestDynamicFinding(finding: Finding, decision?: DecisionRecord, docId?: string) {
   const store = getStore();
   const now = new Date().toISOString();
   
+  finding.source = 'live';
+  finding.timestamp = now;
+  finding.documentId = docId;
   store.findings.unshift(finding);
+  
   if (decision) {
+    decision.source = 'live';
+    decision.timestamp = now;
+    decision.documentId = docId;
     store.decisions.set(decision.id, decision);
+  }
+
+  if (docId) {
+    const doc = store.documents.find(d => d.id === docId);
+    if (doc) {
+      doc.findingsCount++;
+      if (decision) doc.decisionsCount++;
+      doc.evidenceCount += finding.citations.length;
+      doc.graphNodesCount += decision ? 2 : 1;
+    }
   }
 
   const risk: EntityBase = {
@@ -303,6 +393,9 @@ export function ingestDynamicFinding(finding: Finding, decision?: DecisionRecord
     owner: store.user.personId, verification: 'SystemVerified',
     tenantId: store.user.tenantId, projectId: 'PRJ-AQUILA',
     props: { severity: finding.severity, confidence: finding.confidence, agent: finding.agentName },
+    source: 'live',
+    timestamp: now,
+    documentId: docId,
   };
   store.graph.addNode(risk);
   store.graph.addEdge({ id: `E-${finding.riskId}-DET`, from: finding.agentId, to: finding.riskId, verb: 'DETECTED' });
@@ -316,6 +409,9 @@ export function ingestDynamicFinding(finding: Finding, decision?: DecisionRecord
       owner: store.user.personId, verification: 'SystemVerified',
       tenantId: store.user.tenantId, projectId: 'PRJ-AQUILA',
       props: { agent: finding.agentName },
+      source: 'live',
+      timestamp: now,
+      documentId: docId,
     };
     store.graph.addNode(decisionNode);
     store.graph.addEdge({ id: `E-${finding.decisionId}-MIT`, from: finding.decisionId, to: finding.riskId, verb: 'MITIGATES' });

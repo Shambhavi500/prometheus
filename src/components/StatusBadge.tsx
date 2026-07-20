@@ -1,24 +1,28 @@
-'use client';
+export function StatusBadge({ label }: { label: string }) {
+  let color = 'var(--txt-md)';
+  let bg = 'var(--bg-2)';
+  if (label === 'Processing') {
+    color = 'var(--amber)';
+    bg = 'rgba(255, 171, 0, 0.1)';
+  } else if (label === 'Processed' || label === 'Active') {
+    color = 'var(--teal)';
+    bg = 'rgba(0, 240, 255, 0.1)';
+  } else if (label === 'Failed') {
+    color = 'var(--red)';
+    bg = 'rgba(255, 86, 48, 0.1)';
+  }
 
-/** Status is always text + color, never color alone (06_COMPONENTS, 03_DESIGN a11y). */
-
-const VARIANT: Record<string, string> = {
-  Critical: 'badge--critical',
-  High: 'badge--warning',
-  Medium: 'badge--neutral',
-  Low: 'badge--neutral',
-  Deviation: 'badge--critical',
-  'Data Gap': 'badge--warning',
-  Compliant: 'badge--success',
-  Signed: 'badge--success',
-  Approved: 'badge--success',
-  Rejected: 'badge--neutral',
-  Pending: 'badge--neutral',
-  Open: 'badge--warning',
-  Mitigated: 'badge--success',
-};
-
-export function StatusBadge({ label, variant }: { label: string; variant?: string }) {
-  const cls = VARIANT[variant ?? label] ?? 'badge--neutral';
-  return <span className={`badge ${cls}`}>{label}</span>;
+  return (
+    <span style={{
+      display: 'inline-block',
+      padding: '2px 8px',
+      borderRadius: '4px',
+      background: bg,
+      color: color,
+      fontSize: '11px',
+      fontWeight: 500,
+    }}>
+      {label}
+    </span>
+  );
 }

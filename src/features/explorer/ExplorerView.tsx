@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { GraphExplorer } from '@/components/GraphExplorer';
-import { useEntityIndex, useNeighborhood } from '@/core/api/hooks';
+import { useEntityIndex, useNeighborhood, useDocuments } from '@/core/api/hooks';
 
 /**
  * Digital Thread Explorer — lateral, relational navigation. Breadcrumbs are
@@ -17,6 +17,10 @@ export function ExplorerView() {
   const [history, setHistory] = useState<string[]>([initialFocus]);
   const { data: entityData } = useEntityIndex();
   const { data: hood } = useNeighborhood(focusId, 1);
+  const { data: docData } = useDocuments();
+  
+  const [filterMode, setFilterMode] = useState<'all'|'baseline'|'live'>('all');
+  const [filterDocId, setFilterDocId] = useState<string>('all');
 
   useEffect(() => {
     const fromUrl = params.get('focus');
@@ -47,7 +51,28 @@ export function ExplorerView() {
           {hood ? `${hood.nodes.length - 1} connected entities · ${hood.edges.length} typed edges` : 'Traversing graph...'}
         </span>
         <span className="page__spacer" />
-        <span className="page__meta">Click a node to expand its neighborhood · Ctrl+K to jump to any entity</span>
+        <span className="page__meta" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <span>Traversing Graph</span>
+          <select 
+            value={filterMode} 
+            onChange={e => setFilterMode(e.target.value as any)}
+            style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', color: 'var(--txt-hi)', padding: '2px 8px', borderRadius: '4px' }}
+          >
+            <option value="all">All Data</option>
+            <option value="baseline">Baseline Only</option>
+            <option value="live">Live Only</option>
+          </select>
+          <select 
+            value={filterDocId} 
+            onChange={e => setFilterDocId(e.target.value)}
+            style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', color: 'var(--txt-hi)', padding: '2px 8px', borderRadius: '4px' }}
+          >
+            <option value="all">All Documents</option>
+            {docData?.documents.map(d => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+        </span>
       </div>
       <div className="gx__crumbs" aria-label="Traversal history">
         {history.map((id, i) => (
@@ -62,7 +87,7 @@ export function ExplorerView() {
         ))}
       </div>
       <div className="page__body" style={{ minHeight: 0 }}>
-        <GraphExplorer focusId={focusId} onFocus={focusTo} />
+        <GraphExplorer focusId={focusId} onFocus={focusTo} filterMode={filterMode} filterDocId={filterDocId} />
       </div>
     </div>
   );

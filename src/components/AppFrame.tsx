@@ -14,6 +14,7 @@ import { UniversalBreadcrumb } from './UniversalBreadcrumb';
 
 const NAV = [
   { path: '/overview', label: 'Overview', icon: <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" /> },
+  { path: '/documents', label: 'Documents', icon: <path d="M4 4h16v16H4z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /> },
   { path: '/console', label: 'Console', icon: <path d="M3 5h18v14H3zM3 9h18M7 13h6" /> },
   { path: '/spec-compliance', label: 'Spec', icon: <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13l2 2 4-4" /> },
   { path: '/schedule-risk', label: 'Schedule', icon: <path d="M3 6h10M3 12h14M3 18h8M19 15v6M16 18h6" /> },

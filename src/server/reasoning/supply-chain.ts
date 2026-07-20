@@ -9,7 +9,7 @@
 
 import type { TypedGraph } from '../graph/engine';
 import { cite } from '../graph/tools';
-import type { Finding, GeoPoint, RiskLevel, ShipmentArc, SupplyChainData, TraceStep } from '../types';
+import type { Finding, GeoPoint, RiskLevel, ShipmentArc, SupplyChainData, TraceStep, DecisionRecord } from '../types';
 
 function riskLevelFromScore(score: number): RiskLevel {
   if (score >= 0.7) return 'Critical';

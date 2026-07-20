@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import type { Citation } from '@prometheus/ontology';
-import type { DecisionRecord, Finding } from '@/server/types';
+import type { DecisionRecord, Finding, UploadedDocument } from '@/server/types';
+import { useDocuments } from '@/core/api/hooks';
 import { CitationTag } from '@/components/CitationTag';
 import { DecisionBlock } from '@/components/DecisionBlock';
 import { EvidenceViewer } from '@/components/EvidenceViewer';
@@ -30,8 +31,11 @@ export function DecisionDetail({
 }) {
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
   const [viewMode, setViewMode] = useState<'normal' | 'graph'>('normal');
+  const { data: docData } = useDocuments();
 
   useEffect(() => setActiveCitation(null), [finding.id]);
+
+  const sourceDoc = finding.documentId ? docData?.documents.find((d: UploadedDocument) => d.id === finding.documentId) : null;
 
   return (
     <div style={{ display: 'flex', height: '100%' }}>
@@ -75,6 +79,18 @@ export function DecisionDetail({
               ))}
             </div>
           </div>
+
+          {finding.source === 'live' && sourceDoc && (
+            <div className="detail__section" style={{ background: 'rgba(0, 240, 255, 0.05)', border: '1px dashed var(--teal-dim)' }}>
+              <div className="detail__label" style={{ color: 'var(--teal)' }}>Generated From Upload</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', fontSize: '13px', marginTop: '8px' }}>
+                <div><span style={{ color: 'var(--txt-md)' }}>Document:</span> <span style={{ color: 'var(--txt-hi)' }}>{sourceDoc.name}</span></div>
+                <div><span style={{ color: 'var(--txt-md)' }}>Extracted At:</span> <span style={{ color: 'var(--txt-hi)' }}>{new Date(finding.timestamp!).toLocaleTimeString()}</span></div>
+                <div><span style={{ color: 'var(--txt-md)' }}>Location:</span> <span style={{ color: 'var(--txt-hi)' }}>Page {finding.citations[0]?.page}, Paragraph {finding.citations[0]?.blockId.split('-').pop()}</span></div>
+                <div><span style={{ color: 'var(--txt-md)' }}>Confidence:</span> <span style={{ color: 'var(--teal)' }}>{fmtConfidence(finding.confidence)}</span></div>
+              </div>
+            </div>
+          )}
 
           <div className="detail__section">
             <div className="detail__label">Impact</div>

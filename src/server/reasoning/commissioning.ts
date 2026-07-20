@@ -9,7 +9,7 @@
 
 import type { TypedGraph } from '../graph/engine';
 import { cite } from '../graph/tools';
-import { CX_LEVELS, type CxLevel, type CxNode, type CxStatus, type Finding, type TraceStep } from '../types';
+import { CX_LEVELS, type CxLevel, type CxNode, type CxStatus, type Finding, type TraceStep, type DecisionRecord } from '../types';
 
 const STATUS_WEIGHT: Record<CxStatus, number> = {
   Complete: 1,

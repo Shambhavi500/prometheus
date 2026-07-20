@@ -9,7 +9,7 @@
 
 import type { TypedGraph } from '../graph/engine';
 import { cite } from '../graph/tools';
-import type { Finding, SpecCheckRow, TraceStep } from '../types';
+import type { Finding, SpecCheckRow, TraceStep, DecisionRecord } from '../types';
 
 export interface NumericComparison {
   operator: '=' | '<=' | '>=';

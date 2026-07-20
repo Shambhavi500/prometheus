@@ -41,6 +41,20 @@ export class TypedGraph {
     this.nodes.set(node.id, node);
   }
 
+  removeNode(id: string): void {
+    if (!this.nodes.has(id)) return;
+    this.nodes.delete(id);
+    this.edges = this.edges.filter((e) => e.from !== id && e.to !== id);
+    this.outAdj.delete(id);
+    this.inAdj.delete(id);
+    for (const [key, edges] of this.outAdj.entries()) {
+      this.outAdj.set(key, edges.filter((e) => e.to !== id));
+    }
+    for (const [key, edges] of this.inAdj.entries()) {
+      this.inAdj.set(key, edges.filter((e) => e.from !== id));
+    }
+  }
+
   addEdge(edge: Edge): void {
     if (!this.nodes.has(edge.from) || !this.nodes.has(edge.to)) {
       throw new Error(`Edge ${edge.id} references unknown entity (${edge.from} -> ${edge.to})`);

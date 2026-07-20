@@ -53,6 +53,9 @@ export interface EntityBase {
   tenantId?: string;
   projectId?: string;
   props: Record<string, ScalarProp>;
+  source?: 'baseline' | 'live';
+  timestamp?: string;
+  documentId?: string;
 }
 
 /** Typed parameters a Requirement mandates — evaluated deterministically, never by an LLM. */

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { EntityBase, Edge } from '@prometheus/ontology';
 import { useNeighborhood } from '@/core/api/hooks';
+import { LiveBadge } from '@/components/LiveBadge';
 
 /**
  * GraphExplorer — orthogonal connected-neighborhood view. Never the whole
@@ -18,6 +19,8 @@ const COL_GAP = 96;
 interface Props {
   focusId: string;
   onFocus: (id: string) => void;
+  filterMode?: 'all' | 'baseline' | 'live';
+  filterDocId?: string;
 }
 
 function NodeCard({
@@ -70,11 +73,18 @@ function NodeCard({
           {node.status.toUpperCase()}
         </text>
       )}
+      {node.source === 'live' && (
+        <foreignObject x={NODE_W - 54} y={24} width={46} height={20}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', height: '100%', alignItems: 'center' }}>
+            <LiveBadge />
+          </div>
+        </foreignObject>
+      )}
     </g>
   );
 }
 
-export function GraphExplorer({ focusId, onFocus }: Props) {
+export function GraphExplorer({ focusId, onFocus, filterMode = 'all', filterDocId = 'all' }: Props) {
   const { data, isLoading } = useNeighborhood(focusId, 1);
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -89,10 +99,23 @@ export function GraphExplorer({ focusId, onFocus }: Props) {
   }
 
   const { focus, edges } = data;
-  const nodeById = new Map(data.nodes.map((n) => [n.id, n]));
+  let filteredNodes = data.nodes;
+  if (filterMode === 'baseline') {
+    filteredNodes = filteredNodes.filter(n => n.source !== 'live' || n.id === focusId);
+  } else if (filterMode === 'live') {
+    filteredNodes = filteredNodes.filter(n => n.source === 'live' || n.id === focusId);
+  }
+  if (filterDocId !== 'all') {
+    filteredNodes = filteredNodes.filter(n => n.documentId === filterDocId || n.id === focusId);
+  }
+
+  const nodeById = new Map(filteredNodes.map((n) => [n.id, n]));
+  
+  let filteredEdges = edges.filter(e => nodeById.has(e.from) && nodeById.has(e.to));
+
   // Inbound: neighbor → focus. Outbound: focus → neighbor.
-  const inbound = edges.filter((e) => e.to === focusId && e.from !== focusId);
-  const outbound = edges.filter((e) => e.from === focusId && e.to !== focusId);
+  const inbound = filteredEdges.filter((e) => e.to === focusId && e.from !== focusId);
+  const outbound = filteredEdges.filter((e) => e.from === focusId && e.to !== focusId);
 
   const colHeight = (n: number) => n * (NODE_H + V_GAP) - V_GAP;
   const maxRows = Math.max(inbound.length, outbound.length, 1);

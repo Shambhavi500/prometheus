@@ -254,20 +254,31 @@ export default function Home() {
                 border: '1px solid var(--line-strong)', 
                 padding: '32px', 
                 cursor: 'pointer',
-                background: 'var(--bg-1)',
+                background: 'linear-gradient(180deg, rgba(22, 28, 42, 0.4) 0%, rgba(16, 21, 32, 0.8) 100%)',
+                backdropFilter: 'blur(12px)',
+                borderRadius: '12px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '16px',
-                transition: 'border-color 0.2s ease',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 4px 24px rgba(0, 0, 0, 0.2)'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--teal)'}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--line-strong)'}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--teal)';
+                e.currentTarget.style.transform = 'translateY(-4px)';
+                e.currentTarget.style.boxShadow = '0 12px 32px rgba(0, 240, 255, 0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'var(--line-strong)';
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = '0 4px 24px rgba(0, 0, 0, 0.2)';
+              }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '24px', color: 'var(--txt-hi)', fontWeight: 300 }}>Project Meghdoot (NM-1)</span>
-                <span className="badge badge--success" style={{ background: 'var(--teal-dim)', color: 'var(--teal)' }}>Active</span>
+                <span style={{ fontSize: '28px', color: 'var(--txt-hi)', fontWeight: 300, letterSpacing: '-0.02em' }}>Project Meghdoot (NM-1)</span>
+                <span className="badge badge--success" style={{ background: 'var(--teal-dim)', color: 'var(--teal)', border: '1px solid rgba(0,240,255,0.4)', boxShadow: '0 0 12px rgba(0,240,255,0.2)' }}>Active</span>
               </div>
-              <div style={{ display: 'flex', gap: '24px', fontSize: 'var(--fs-11)', color: 'var(--txt-md)', fontFamily: 'var(--font-mono)' }}>
+              <div style={{ display: 'flex', gap: '24px', fontSize: 'var(--fs-12)', color: 'var(--txt-md)', fontFamily: 'var(--font-mono)' }}>
                 <span>ID: PRJ-992</span>
                 <span>Location: Navi Mumbai, India</span>
                 <span>Type: Hyperscale Data Center</span>
@@ -279,7 +290,8 @@ export default function Home() {
                 border: '1px solid var(--line)', 
                 padding: '32px', 
                 cursor: 'not-allowed',
-                background: 'var(--bg-0)',
+                background: 'rgba(16, 21, 32, 0.4)',
+                borderRadius: '12px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '16px',
@@ -341,16 +353,19 @@ export default function Home() {
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
               style={{ 
-                border: dragActive ? '1px dashed var(--teal)' : '1px dashed var(--line-strong)', 
+                border: dragActive ? '2px dashed var(--teal)' : '2px dashed var(--line-strong)', 
                 padding: '64px', 
                 textAlign: 'center',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 cursor: 'pointer',
-                background: dragActive ? 'var(--teal-dim)' : 'transparent',
+                background: dragActive ? 'var(--teal-dim)' : 'linear-gradient(180deg, rgba(22, 28, 42, 0.4) 0%, rgba(16, 21, 32, 0.6) 100%)',
+                backdropFilter: 'blur(8px)',
+                borderRadius: '16px',
                 gap: '16px',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.3s ease',
+                boxShadow: dragActive ? '0 0 32px rgba(0, 240, 255, 0.2)' : 'none',
               }}
             >
               <input 
@@ -360,7 +375,9 @@ export default function Home() {
                 style={{ display: 'none' }} 
                 onChange={handleFileChange}
               />
-              <span style={{ fontSize: '24px', color: 'var(--txt-md)' }}>Drag new project documents here</span>
+              <span style={{ fontSize: '24px', color: dragActive ? 'var(--teal)' : 'var(--txt-md)', transition: 'color 0.3s ease' }}>
+                {dragActive ? 'Drop documents to upload...' : 'Drag new project documents here'}
+              </span>
               <span style={{ fontSize: 'var(--fs-12)', color: 'var(--txt-lo)' }}>Supports PDF, DWG, XLSX, DOCX (Max 2GB per file)</span>
               <button className="btn" style={{ marginTop: '16px' }} onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
                 Browse Files
@@ -471,35 +488,38 @@ export default function Home() {
             display: 'flex', 
             flexDirection: 'column', 
             gap: '8px', 
-            background: '#090d16', 
+            background: 'rgba(6, 9, 14, 0.95)', 
             padding: '24px', 
-            border: '1px solid var(--line-strong)', 
+            border: '1px solid rgba(0, 240, 255, 0.3)', 
             fontFamily: 'var(--font-mono)', 
-            fontSize: 'var(--fs-11)',
+            fontSize: 'var(--fs-12)',
             height: '320px',
             overflowY: 'auto',
-            borderRadius: '4px',
-            boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.5)'
+            borderRadius: '8px',
+            boxShadow: 'inset 0 0 32px rgba(0, 0, 0, 0.8), 0 0 24px rgba(0, 240, 255, 0.15)',
+            textShadow: '0 0 4px rgba(255, 255, 255, 0.3)',
           }}
         >
           {consoleLogs.map((logMsg, idx) => (
             <div key={idx} style={{ 
               color: logMsg.includes('Baidu OCR Success') ? 'var(--green)' : logMsg.includes('Agent') ? 'var(--teal)' : 'var(--txt-md)',
-              whiteSpace: 'pre-wrap'
+              whiteSpace: 'pre-wrap',
+              textShadow: logMsg.includes('Agent') ? '0 0 8px rgba(0,240,255,0.6)' : logMsg.includes('Success') ? '0 0 8px rgba(0,255,136,0.6)' : 'none'
             }}>
               {logMsg}
             </div>
           ))}
-          {!logsComplete && <div className="blink" style={{ color: 'var(--teal)', marginTop: '4px' }}>_</div>}
+          {!logsComplete && <div className="blink" style={{ color: 'var(--teal)', marginTop: '4px', textShadow: '0 0 8px rgba(0,240,255,0.8)' }}>▍</div>}
         </div>
 
         {/* Real Loading Bar */}
-        <div style={{ height: '4px', background: 'var(--line-strong)', width: '100%', overflow: 'hidden' }}>
+        <div style={{ height: '4px', background: 'var(--line-strong)', width: '100%', overflow: 'hidden', borderRadius: '2px' }}>
           <div style={{ 
             height: '100%', 
             background: 'var(--teal)', 
             width: `${processingProgress}%`,
-            transition: 'width 0.4s ease-out'
+            transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: '0 0 12px var(--teal)'
           }} />
         </div>
       </div>

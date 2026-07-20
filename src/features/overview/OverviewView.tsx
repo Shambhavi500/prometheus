@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useDecisions, useSupplyChain, useSpecRows, useAudit } from '@/core/api/hooks';
 import { useWorkspace } from '@/core/state/workspace';
 import { StatusBadge } from '@/components/StatusBadge';
+import { LiveBadge } from '@/components/LiveBadge';
 
 export function OverviewView() {
   const router = useRouter();
@@ -43,6 +44,7 @@ export function OverviewView() {
   const specCompliancePct = specRows.length > 0 ? ((compliantCount / specRows.length) * 100).toFixed(1) : '100.0';
 
   const openRisks = Object.values(decData?.findings ?? {}).length;
+  const liveRisks = Object.values(decData?.findings ?? {}).filter(f => f.source === 'live').length;
   const operationalHealth = Math.max(0, 100 - (criticalPending.length * 5) - (vendorCritical * 3) - ((specRows.length - compliantCount) * 2)).toFixed(1);
 
   const auditEntries = auditData?.entries ?? [];
@@ -82,9 +84,12 @@ export function OverviewView() {
                 <div style={{ fontSize: 'var(--fs-11)', color: 'var(--txt-md)' }}>Spec Compliance</div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', color: 'var(--green)' }}>{specCompliancePct}%</div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }} id="walkthrough-mission-control-kpi">
                 <div style={{ fontSize: 'var(--fs-11)', color: 'var(--txt-md)' }}>Open Risks</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', color: openRisks > 0 ? 'var(--amber)' : 'var(--green)' }}>{openRisks}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', color: openRisks > 0 ? 'var(--amber)' : 'var(--green)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {openRisks}
+                  {liveRisks > 0 && <span style={{ fontSize: '10px', color: 'var(--teal)', background: 'rgba(0, 240, 255, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>+{liveRisks} since last upload</span>}
+                </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div style={{ fontSize: 'var(--fs-11)', color: 'var(--txt-md)' }}>Critical Decisions</div>
@@ -115,9 +120,12 @@ export function OverviewView() {
                   <header style={{ fontSize: 'var(--fs-10)', color: 'var(--txt-lo)', textTransform: 'uppercase', letterSpacing: '0.12em', borderBottom: '1px solid var(--line-strong)', paddingBottom: '12px', marginBottom: '24px' }}>
                     Requires Judgment
                   </header>
-                  <div className="dblock" style={{ margin: 0, border: '1px solid var(--red-dim)' }}>
+                  <div className="dblock" style={{ margin: 0, border: '1px solid var(--red-dim)' }} id="walkthrough-live-finding">
                     <div className="dblock__head" style={{ borderBottomColor: 'var(--red-dim)', background: 'var(--red-dim)' }}>
-                      <span style={{ color: 'var(--red)' }}>CRITICAL: {primaryFinding?.title ?? 'Risk Detected'}</span>
+                      <span style={{ color: 'var(--red)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        CRITICAL: {primaryFinding?.title ?? 'Risk Detected'}
+                        {primaryDecision.source === 'live' && <LiveBadge />}
+                      </span>
                       <span>{primaryDecision.agentName}</span>
                     </div>
                     <div className="dblock__body" style={{ padding: '24px' }}>
@@ -167,7 +175,10 @@ export function OverviewView() {
                         }}
                       >
                         <div><StatusBadge label={d.severity} /></div>
-                        <div style={{ color: 'var(--txt-hi)' }}>{d.action}</div>
+                        <div style={{ color: 'var(--txt-hi)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {d.action}
+                          {d.source === 'live' && <LiveBadge />}
+                        </div>
                         <div>{d.agentName}</div>
                         <div><StatusBadge label={d.status} /></div>
                       </div>

@@ -4,7 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SourceDocument, EntityBase, Edge } from '@prometheus/ontology';
-import type { AuditEntry, CxNode, DecisionRecord, Finding, KnowledgeData, SessionUser, SpecCheckRow, SupplyChainData } from '@/server/types';
+import type { AuditEntry, CxNode, DecisionRecord, Finding, KnowledgeData, SessionUser, SpecCheckRow, SupplyChainData, UploadedDocument } from '@/server/types';
 import { useWorkspace } from '@/core/state/workspace';
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -142,4 +142,30 @@ export function useDecisionActions() {
   });
 
   return { approve, reject };
+}
+
+export function useDocuments() {
+  return useQuery({
+    queryKey: ['documents'],
+    queryFn: () => fetchJson<{ documents: UploadedDocument[] }>('/api/documents'),
+  });
+}
+
+export function useDocumentActions() {
+  const qc = useQueryClient();
+  const pushToast = useWorkspace((s) => s.pushToast);
+
+  const deleteDoc = useMutation({
+    mutationFn: (id: string) => fetchJson<{ success: boolean }>(`/api/documents/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      pushToast('Document and all generated insights deleted.', 'info');
+      void qc.invalidateQueries({ queryKey: ['documents'] });
+      void qc.invalidateQueries({ queryKey: ['decisions'] });
+      void qc.invalidateQueries({ queryKey: ['spec'] });
+      void qc.invalidateQueries({ queryKey: ['neighborhood'] });
+    },
+    onError: (err) => pushToast(err.message, 'error'),
+  });
+
+  return { deleteDoc };
 }

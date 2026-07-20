@@ -9,7 +9,7 @@
 import type { TypedGraph } from '../graph/engine';
 import { cite } from '../graph/tools';
 import { addWeeks, fmtDate } from './dates';
-import type { CascadeResult, CascadeStep, Finding, TraceStep } from '../types';
+import type { CascadeResult, CascadeStep, Finding, TraceStep, DecisionRecord } from '../types';
 
 /** Pure cascade over (slipIn, freeFloat) pairs. Exported for unit tests. */
 export function propagateSlip(

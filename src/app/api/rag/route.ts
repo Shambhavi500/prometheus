@@ -3,7 +3,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { extractEntities, getNeighborhood } from '@/core/utils/graph-retrieval';
 import { globalVectorStore } from '@/core/utils/vector';
 
-const ai = new GoogleGenAI({});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export async function POST(request: Request) {
   try {
