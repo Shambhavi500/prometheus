@@ -151,68 +151,6 @@ export function KnowledgeView() {
             </div>
           </section>
         )}
-
-        {/* Ask the Digital Thread (Layer 2 Hybrid RAG) */}
-        <section className="kb-section">
-          <h2 className="kb-section__title">Ask the Digital Thread</h2>
-          <p className="kb-section__sub">Query the Hybrid Retrieval Engine (Semantic Vector Search + Structural Graph Traversal).</p>
-          
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-            <input 
-              type="text" 
-              className="ui-input" 
-              style={{ flex: 1, padding: '12px 16px', borderRadius: '4px', border: '1px solid var(--line-strong)', background: 'var(--bg-1)', color: 'var(--txt-hi)' }} 
-              placeholder="E.g., What is the lead time for TX-01, and what does the vendor quote say about delays?"
-              value={ragQuery}
-              onChange={(e) => setRagQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleRagSearch()}
-            />
-            <button className="btn btn--approve" onClick={handleRagSearch} disabled={isRagLoading}>
-              {isRagLoading ? 'Querying...' : 'Search Engine'}
-            </button>
-          </div>
-
-          {ragResponse && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', border: '1px solid var(--teal-line)', borderRadius: '8px', padding: '24px', background: 'var(--teal-dim)' }}>
-              
-              <div>
-                <h3 style={{ fontSize: 'var(--fs-10)', color: 'var(--teal)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '8px' }}>Grounded Answer</h3>
-                <div style={{ color: 'var(--txt-hi)', lineHeight: 1.6 }}>
-                  {ragResponse.answer}
-                </div>
-              </div>
-              
-              <div>
-                <h3 style={{ fontSize: 'var(--fs-10)', color: 'var(--teal)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '8px' }}>Reasoning Trace</h3>
-                <div className="mono" style={{ color: 'var(--txt-md)', fontSize: '12px' }}>
-                  {ragResponse.reasoningTrace}
-                </div>
-              </div>
-
-              <div>
-                <h3 style={{ fontSize: 'var(--fs-10)', color: 'var(--teal)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '8px' }}>Structural Graph Facts (Layer 1)</h3>
-                <GraphPathViewer facts={ragResponse.graphFacts || []} />
-              </div>
-
-              {ragResponse.textChunks && ragResponse.textChunks.length > 0 && (
-                <div>
-                  <h3 style={{ fontSize: 'var(--fs-10)', color: 'var(--teal)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '12px' }}>Semantic Document Context (Layer 2)</h3>
-                  <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
-                    {ragResponse.textChunks.map((chunk: any, i: number) => (
-                      <div key={i} style={{ minWidth: '300px', width: '300px', border: '1px solid var(--line)', borderRadius: '4px', padding: '16px', background: 'var(--bg-0)' }}>
-                        <div className="mono" style={{ fontSize: '10px', color: 'var(--teal)', marginBottom: '8px' }}>[Doc: {chunk.sourceDoc}]</div>
-                        <div style={{ fontSize: '12px', color: 'var(--txt-md)', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                          "{chunk.text}"
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-            </div>
-          )}
-        </section>
       </div>
     </div>
   );

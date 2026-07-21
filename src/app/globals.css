@@ -12,12 +12,13 @@
   --card: rgba(255, 255, 255, 0.8);
   --secondary-surface: rgba(241, 245, 249, 0.7);
   --border: rgba(226, 232, 240, 0.6);
-  --primary: #00F0FF;
-  --success: #00FF88;
-  --warning: #FFB000;
-  --danger: #FF2A55;
+  --primary: #008B99;
+  --success: #009952;
+  --warning: #D97700;
+  --danger: #D91A3C;
   --text: #0F172A;
   --muted: #64748B;
+  --shadow-sm: rgba(0, 0, 0, 0.1);
   
   /* Transitional / Mapping for backward compatibility */
   --bg-0: var(--background);
@@ -64,6 +65,7 @@
   --danger: #FF2A55;
   --text: #F8FAFC;
   --muted: #94A3B8;
+  --shadow-sm: rgba(0, 0, 0, 0.4);
 
   /* Transitional / Mapping for backward compatibility */
   --bg-0: var(--background);
@@ -100,6 +102,14 @@ body {
   transition: background-color 300ms ease, color 300ms ease;
   background-image: radial-gradient(circle at top left, rgba(0, 240, 255, 0.05), transparent 40%),
                     radial-gradient(circle at bottom right, rgba(0, 255, 136, 0.03), transparent 50%);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }

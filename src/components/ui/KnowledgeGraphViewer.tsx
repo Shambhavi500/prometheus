@@ -42,7 +42,7 @@ export function KnowledgeGraphViewer({ data }: KnowledgeGraphViewerProps) {
       id: specNodeId,
       position: { x: 500, y: yOffset },
       data: { label: 'Master Specifications' },
-      style: { width: 250, background: 'var(--card)', color: 'var(--text)', border: '2px solid var(--primary)', borderRadius: 'var(--radius)', padding: '10px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' },
+      style: { width: 250, background: 'var(--card)', color: 'var(--text)', border: '2px solid var(--primary)', borderRadius: 'var(--radius)', padding: '10px', boxShadow: '0 4px 6px -1px var(--shadow-sm)' },
     });
 
     yOffset += 120;
@@ -76,7 +76,7 @@ export function KnowledgeGraphViewer({ data }: KnowledgeGraphViewerProps) {
         id: devNodeId,
         position: { x: 250 + index * 600, y: yOffset },
         data: { label: `Deviation: ${dev.reason}` },
-        style: { width: 400, background: 'var(--card)', color: 'var(--text)', border: '2px solid var(--danger)', borderRadius: 'var(--radius)', padding: '10px', boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.1)' },
+        style: { width: 400, background: 'var(--card)', color: 'var(--text)', border: '2px solid var(--danger)', borderRadius: 'var(--radius)', padding: '10px', boxShadow: '0 4px 6px -1px var(--red-dim)' },
       });
 
       // Link Deviation to the Spec

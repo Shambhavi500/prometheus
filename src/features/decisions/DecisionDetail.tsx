@@ -12,7 +12,6 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { CascadeView } from '@/components/CascadeView';
 import { EntityTag } from '@/components/EntityTag';
 import { fmtConfidence } from '@/core/format';
-import { ContextSidebar } from '@/components/ContextSidebar';
 
 /**
  * Decision detail — the right pane of the Command Console split view.
@@ -81,7 +80,7 @@ export function DecisionDetail({
           </div>
 
           {finding.source === 'live' && sourceDoc && (
-            <div className="detail__section" style={{ background: 'rgba(0, 240, 255, 0.05)', border: '1px dashed var(--teal-dim)' }}>
+            <div className="detail__section" style={{ background: 'var(--teal-dim)', border: '1px dashed var(--teal-dim)' }}>
               <div className="detail__label" style={{ color: 'var(--teal)' }}>Generated From Upload</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', fontSize: '13px', marginTop: '8px' }}>
                 <div><span style={{ color: 'var(--txt-md)' }}>Document:</span> <span style={{ color: 'var(--txt-hi)' }}>{sourceDoc.name}</span></div>
@@ -133,7 +132,7 @@ export function DecisionDetail({
         <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div>
             <div className="detail__label" style={{ marginBottom: '8px' }}>GraphRAG Traversal Query (Simulated)</div>
-            <div style={{ background: '#090d16', padding: '16px', borderRadius: '4px', border: '1px solid var(--line-strong)', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--green)', whiteSpace: 'pre-wrap' }}>
+            <div style={{ background: 'var(--bg-0)', padding: '16px', borderRadius: '4px', border: '1px solid var(--line-strong)', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--green)', whiteSpace: 'pre-wrap' }}>
 {`// Executed by ${finding.agentName}
 MATCH (d:Document {id: "${finding.citations[0]?.docId || 'DOC-CURRENT'}"})-[:EXTRACTED]->(e:Entity)
 MATCH (e)-[rel*1..3]-(context:Node)
@@ -143,7 +142,7 @@ RETURN e, rel, context LIMIT 50`}
           </div>
           <div>
             <div className="detail__label" style={{ marginBottom: '8px' }}>In-Memory Graph Nodes Identified</div>
-            <div style={{ background: '#090d16', padding: '16px', borderRadius: '4px', border: '1px solid var(--line-strong)', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--txt-md)', whiteSpace: 'pre-wrap', maxHeight: '300px', overflowY: 'auto' }}>
+            <div style={{ background: 'var(--bg-0)', padding: '16px', borderRadius: '4px', border: '1px solid var(--line-strong)', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--txt-md)', whiteSpace: 'pre-wrap', maxHeight: '300px', overflowY: 'auto' }}>
 {JSON.stringify(entityTags, null, 2)}
             </div>
           </div>
@@ -166,7 +165,6 @@ RETURN e, rel, context LIMIT 50`}
 
         <DecisionBlock decision={decision} />
       </div>
-      <ContextSidebar decision={decision} finding={finding} entityTags={entityTags} />
     </div>
   );
 }

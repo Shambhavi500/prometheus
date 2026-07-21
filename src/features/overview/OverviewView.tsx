@@ -1,17 +1,41 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDecisions, useSupplyChain, useSpecRows, useAudit } from '@/core/api/hooks';
+import { useDecisions, useSupplyChain, useSpecRows, useAudit, useDocuments, useEntityIndex } from '@/core/api/hooks';
 import { useWorkspace } from '@/core/state/workspace';
 import { StatusBadge } from '@/components/StatusBadge';
 import { LiveBadge } from '@/components/LiveBadge';
+import { GraphPathViewer } from '@/features/knowledge/components/GraphPathViewer';
 
 export function OverviewView() {
   const router = useRouter();
+  const [ragQuery, setRagQuery] = useState('');
+  const [ragResponse, setRagResponse] = useState<any>(null);
+  const [isRagLoading, setIsRagLoading] = useState(false);
   const { data: decData } = useDecisions();
   const { data: supply } = useSupplyChain();
+  const { data: docData } = useDocuments();
+  const { data: entityData } = useEntityIndex();
   const selectDecision = useWorkspace((s) => s.selectDecision);
+
+  const handleRagSearch = async () => {
+    if (!ragQuery.trim()) return;
+    setIsRagLoading(true);
+    try {
+      const res = await fetch('/api/rag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: ragQuery })
+      });
+      const data = await res.json();
+      setRagResponse(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsRagLoading(false);
+    }
+  };
 
   const getAgentRoute = (agentName: string) => {
     if (agentName.includes('Schedule')) return '/schedule-risk';
@@ -59,66 +83,86 @@ export function OverviewView() {
         <span className="page__meta" style={{ display: 'flex', gap: '24px' }}>
           <span>Tenant: <span style={{ color: 'var(--txt-hi)' }}>PROMETHEUS</span></span>
           <span>Role: <span style={{ color: 'var(--txt-hi)' }}>Project Director</span></span>
-          <span style={{ color: 'var(--teal)' }}>Network Nominal (8/8 Agents)</span>
         </span>
       </div>
 
       <div className="page__body" style={{ overflowY: 'auto', display: 'block', paddingBottom: '96px' }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '64px 32px 0', display: 'flex', flexDirection: 'column', gap: '64px' }}>
           
-          {/* HERO SECTION - Precise, typography-led, no boxes */}
-          <div style={{ display: 'flex', gap: '48px', alignItems: 'center' }}>
-            <div style={{ flexShrink: 0 }}>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-10)', color: 'var(--txt-lo)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '8px' }}>
-                Operational Health
-              </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '48px', fontWeight: 400, color: 'var(--teal)', lineHeight: 1, letterSpacing: '-0.04em' }}>
-                {operationalHealth}<span style={{ fontSize: '32px', color: 'var(--teal)' }}>%</span>
-              </div>
-            </div>
-            
-            <div style={{ width: '1px', height: '56px', background: 'var(--line-strong)' }} />
-            
-            <div style={{ display: 'flex', gap: '40px', flex: 1 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ fontSize: 'var(--fs-11)', color: 'var(--txt-md)' }}>Spec Compliance</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', color: 'var(--green)' }}>{specCompliancePct}%</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }} id="walkthrough-mission-control-kpi">
-                <div style={{ fontSize: 'var(--fs-11)', color: 'var(--txt-md)' }}>Open Risks</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', color: openRisks > 0 ? 'var(--amber)' : 'var(--green)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {openRisks}
-                  {liveRisks > 0 && <span style={{ fontSize: '10px', color: 'var(--teal)', background: 'rgba(0, 240, 255, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>+{liveRisks} since last upload</span>}
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ fontSize: 'var(--fs-11)', color: 'var(--txt-md)' }}>Critical Decisions</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', color: criticalPending.length > 0 ? 'var(--red)' : 'var(--txt-hi)' }}>{criticalPending.length}</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ fontSize: 'var(--fs-11)', color: 'var(--txt-md)' }}>Vendor Risk</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', color: vendorCritical > 0 ? 'var(--red)' : 'var(--amber)' }}>{vendorCritical} Critical</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }} onClick={() => router.push('/repository')}>
-                <div style={{ fontSize: 'var(--fs-11)', color: 'var(--txt-md)' }}>Project Documents</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', color: 'var(--txt-hi)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  46 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* MAIN GRID - Two columns separated by gap, zero nested borders */}
+          {/* RAG DEEP DIVE (Replacing the Search bar but keeping interactability) */}
+          <section style={{ display: 'flex', flexDirection: 'column', gap: '24px', borderBottom: '1px solid var(--line-strong)', paddingBottom: '64px' }}>
+            <h2 style={{ fontSize: '18px', color: 'var(--txt-hi)', fontWeight: 300 }}>Hybrid RAG Retrieval State</h2>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input 
+                type="text" 
+                className="ui-input" 
+                style={{ flex: 1, padding: '12px 16px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--bg-1)', color: 'var(--txt-hi)' }} 
+                placeholder="Query the RAG engine manually (e.g., Lead time for TX-01)..."
+                value={ragQuery}
+                onChange={(e) => setRagQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleRagSearch()}
+              />
+              <button className="btn btn--approve" onClick={handleRagSearch} disabled={isRagLoading}>
+                {isRagLoading ? 'Retrieving...' : 'Query'}
+              </button>
+            </div>
+
+            {/* Always show the RAG state, either from manual query or active primary decision */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+              {/* Evidence Chunks */}
+              <div style={{ background: 'var(--bg-1)', border: '1px solid var(--teal-line)', borderRadius: 'var(--radius)', padding: '24px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--teal)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '16px' }}>Retrieved Evidence Chunks</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {(ragResponse?.textChunks || primaryFinding?.citations || []).length > 0 ? (
+                    (ragResponse?.textChunks || primaryFinding?.citations || []).slice(0, 3).map((chunk: any, i: number) => (
+                      <div key={i} style={{ borderLeft: '2px solid var(--teal)', paddingLeft: '12px', fontSize: '12px', color: 'var(--txt-hi)' }}>
+                        <div className="mono" style={{ fontSize: '10px', color: 'var(--teal)', marginBottom: '4px' }}>Source: {chunk.sourceDoc || chunk.docId}</div>
+                        "{chunk.text || chunk.quote}"
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ color: 'var(--txt-md)' }}>No evidence retrieved yet.</div>
+                  )}
+                </div>
+              </div>
+
+              {/* KG Nodes & Reasoning */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--radius)', padding: '24px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--txt-md)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '16px' }}>Knowledge Graph Nodes Activated</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {(ragResponse?.graphFacts || primaryFinding?.entityIds || []).length > 0 ? (
+                       (ragResponse?.graphFacts ? ragResponse.graphFacts.map((f: any) => f.node) : primaryFinding!.entityIds).map((node: string, i: number) => (
+                        <span key={i} style={{ background: 'var(--bg-2)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', color: 'var(--txt-hi)', border: '1px solid var(--line)' }}>{node}</span>
+                      ))
+                    ) : (
+                      <div style={{ color: 'var(--txt-md)' }}>Waiting for retrieval traversal.</div>
+                    )}
+                  </div>
+                </div>
+                
+                {ragResponse && (
+                  <div style={{ background: 'var(--teal-dim)', border: '1px solid var(--teal-line)', borderRadius: 'var(--radius)', padding: '24px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--teal)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '8px' }}>Generated Answer</div>
+                    <div style={{ color: 'var(--txt-hi)', lineHeight: 1.5 }}>{ragResponse.answer}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* MAIN GRID - Active Insights */}
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)', gap: '64px' }}>
             
-            {/* LEFT COLUMN: Critical Focus & Queues */}
+            {/* LEFT COLUMN: Critical Focus */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '56px' }}>
               
               {/* PRIMARY DECISION */}
               {primaryDecision && (
                 <section>
                   <header style={{ fontSize: 'var(--fs-10)', color: 'var(--txt-lo)', textTransform: 'uppercase', letterSpacing: '0.12em', borderBottom: '1px solid var(--line-strong)', paddingBottom: '12px', marginBottom: '24px' }}>
-                    Requires Judgment
+                    Latest Recommendation Action
                   </header>
                   <div className="dblock" style={{ margin: 0, border: '1px solid var(--red-dim)' }} id="walkthrough-live-finding">
                     <div className="dblock__head" style={{ borderBottomColor: 'var(--red-dim)', background: 'var(--red-dim)' }}>
@@ -131,11 +175,6 @@ export function OverviewView() {
                     <div className="dblock__body" style={{ padding: '24px' }}>
                       <div className="dblock__action" style={{ fontSize: 'var(--fs-16)' }}>{primaryDecision.action}</div>
                       <div className="dblock__impact" style={{ marginTop: '8px' }}>{primaryDecision.impact}</div>
-                      
-                      <div className="isolation-seal__kv" style={{ gridTemplateColumns: '120px 1fr', marginTop: '24px', gap: '16px' }}>
-                        <div><dt>Confidence</dt><dd className="mono" style={{ color: 'var(--teal)' }}>95.8%</dd></div>
-                        <div><dt>Evidence Base</dt><dd>Vendor Quote, Project Schedule, NM-0 Historical</dd></div>
-                      </div>
                     </div>
                     <div className="dblock__buttons" style={{ padding: '16px 24px', borderTopColor: 'var(--line)' }}>
                       <button 
@@ -145,10 +184,8 @@ export function OverviewView() {
                           router.push(getAgentRoute(primaryDecision.agentName));
                         }}
                       >
-                        Review in Context
+                        Review Full Context
                       </button>
-                      <button className="btn">Delegate</button>
-                      <span className="dblock__kbd">Press Enter</span>
                     </div>
                   </div>
                 </section>
@@ -222,35 +259,7 @@ export function OverviewView() {
             {/* RIGHT COLUMN: Intelligence & Activity */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '56px' }}>
               
-              {/* AGENT STATUS GRID */}
-              <section>
-                <header style={{ fontSize: 'var(--fs-10)', color: 'var(--txt-lo)', textTransform: 'uppercase', letterSpacing: '0.12em', borderBottom: '1px solid var(--line-strong)', paddingBottom: '12px', marginBottom: '24px' }}>
-                  Intelligence Network
-                </header>
-                <div className="isolation-seal__kv" style={{ gridTemplateColumns: '1fr 1fr', gap: '16px 24px' }}>
-                  <div style={{ borderLeft: '1px solid var(--teal-line)', paddingLeft: '12px' }}><dt>Spec Agent</dt><dd className="mono" style={{color:'var(--teal)'}}>Analyzing</dd></div>
-                  <div style={{ borderLeft: '1px solid var(--teal-line)', paddingLeft: '12px' }}><dt>Schedule Agent</dt><dd className="mono" style={{color:'var(--teal)'}}>Active</dd></div>
-                  <div style={{ borderLeft: '1px solid var(--line)', paddingLeft: '12px' }}><dt>Knowledge Agent</dt><dd className="mono" style={{color:'var(--txt-md)'}}>Idle</dd></div>
-                  <div style={{ borderLeft: '1px solid var(--teal-line)', paddingLeft: '12px' }}><dt>Supply Agent</dt><dd className="mono" style={{color:'var(--teal)'}}>Active</dd></div>
-                  <div style={{ borderLeft: '1px solid var(--amber-dim)', paddingLeft: '12px' }}><dt>Cx Agent</dt><dd className="mono" style={{color:'var(--amber)'}}>Waiting (Data)</dd></div>
-                  <div style={{ borderLeft: '1px solid var(--teal-line)', paddingLeft: '12px' }}><dt>Audit Agent</dt><dd className="mono" style={{color:'var(--teal)'}}>Observing</dd></div>
-                </div>
-              </section>
 
-              {/* PROJECT TIMELINE */}
-              <section>
-                <header style={{ fontSize: 'var(--fs-10)', color: 'var(--txt-lo)', textTransform: 'uppercase', letterSpacing: '0.12em', borderBottom: '1px solid var(--line-strong)', paddingBottom: '12px', marginBottom: '24px' }}>
-                  Project Timeline
-                </header>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  <span className="badge badge--success">Design</span>
-                  <span className="badge badge--success">Procurement</span>
-                  <span className="badge badge--warning" style={{ boxShadow: '0 0 0 1px var(--amber)' }}>Construction</span>
-                  <span className="badge badge--neutral">Testing</span>
-                  <span className="badge badge--neutral">Commissioning</span>
-                  <span className="badge badge--neutral">Go Live</span>
-                </div>
-              </section>
 
               {/* AGENT ACTIVITY FEED */}
               <section>

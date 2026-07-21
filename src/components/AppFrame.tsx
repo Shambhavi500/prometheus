@@ -21,7 +21,7 @@ const NAV = [
   { path: '/supply-chain', label: 'Supply', icon: <path d="M12 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM4 12h16M12 4c2.5 2 2.5 14 0 16M12 4c-2.5 2-2.5 14 0 16" /> },
   { path: '/commissioning', label: 'Commission', icon: <path d="M4 5h16M4 10h16M4 15h10M17 14l2 2 4-4" /> },
   { path: '/knowledge', label: 'Knowledge', icon: <path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM9 8h6M9 12h6M9 16h4" /> },
-  { path: '/repository', label: 'Repository', icon: <path d="M3 3v18h18V3H3zm16 16H5V5h14v14zM7 7h10v2H7zM7 11h10v2H7zM7 15h6v2H7z" /> },
+
   { path: '/explorer', label: 'Thread', icon: <path d="M5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM19 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM9 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM7 6h10M6 8l3 6M18 13l-7 5" /> },
   { path: '/audit', label: 'Audit', icon: <path d="M12 3l8 4v6c0 4-3.5 7-8 8-4.5-1-8-4-8-8V7zM9 12l2 2 4-4" /> },
 ];

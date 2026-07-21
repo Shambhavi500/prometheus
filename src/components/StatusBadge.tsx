@@ -3,13 +3,13 @@ export function StatusBadge({ label }: { label: string }) {
   let bg = 'var(--bg-2)';
   if (label === 'Processing') {
     color = 'var(--amber)';
-    bg = 'rgba(255, 171, 0, 0.1)';
+    bg = 'var(--amber-dim)';
   } else if (label === 'Processed' || label === 'Active') {
     color = 'var(--teal)';
-    bg = 'rgba(0, 240, 255, 0.1)';
+    bg = 'var(--teal-dim)';
   } else if (label === 'Failed') {
     color = 'var(--red)';
-    bg = 'rgba(255, 86, 48, 0.1)';
+    bg = 'var(--red-dim)';
   }
 
   return (

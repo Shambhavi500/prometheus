@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { DocumentViewer } from './DocumentViewer';
 
-export function RepositoryView() {
+export function DocumentsView() {
   const [tree, setTree] = useState<any[]>([]);
   const [crossRefs, setCrossRefs] = useState<any[]>([]);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
