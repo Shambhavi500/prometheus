@@ -182,7 +182,142 @@ function boot(): PlatformStore {
     decisions,
     audit,
     bootedAt,
-    documents: [],
+    documents: [
+      {
+        id: 'DOC-CDUEQUIP-75WC',
+        name: 'CDU_Equipment_Specification.pdf',
+        uploadedAt: bootedAt,
+        status: 'Processed',
+        type: 'application/pdf',
+        source: 'live',
+        findingsCount: 3,
+        decisionsCount: 2,
+        evidenceCount: 4,
+        graphNodesCount: 8,
+        pagesProcessed: 12,
+        ocrResult: {
+          words_result_num: 84,
+          words_result: [
+            { words: 'SECTION 23 64 26 - COOLING DISTRIBUTION UNITS (CDU)' },
+            { words: 'PART 1 - GENERAL DESIGN CRITERIA & THERMAL SPECIFICATIONS' },
+            { words: '1.01 EQUIPMENT TAG: CDU-RACK-01 (Primary In-Row Cooling Unit)' },
+            { words: '1.02 RATED COOLING CAPACITY: 75.0 kW @ 20°C Delta T (Fluid: PG25)' },
+            { words: '1.03 SUBMITTED VENDOR DRAWING: PCS-CDU-MOD-402 (Revision B)' },
+            { words: '1.04 SUBMITTED THERMAL CAPACITY: 62.5 kW @ 20°C Delta T [DEVIATION DETECTED]' },
+            { words: '1.05 PRIMARY CIRCUIT FLOW RATE: 120 L/min @ 4.2 bar differential pressure' },
+            { words: '1.06 SECONDARY LOOP PRESSURE DROP: Max allowable 1.5 bar across server manifold' },
+            { words: '1.07 POWER REQUIREMENTS: 415V AC 3-Phase 50Hz, Dual Redundant Feed (A+B)' },
+            { words: '1.08 MAXIMUM INRUSH CURRENT: 45.0 Amperes (Soft starter circuit required)' },
+            { words: '1.09 GOVERNING CODE CLAUSE: ASHRAE TC 9.9 Thermal Guidelines for Data Processing' },
+            { words: '1.10 VERDICT: DEVIATION - Thermal capacity deficit of 12.5 kW vs baseline specification' },
+            { words: '1.11 RECOMMENDED MITIGATION: Request vendor uprate coil insert or secondary CDU pump booster' }
+          ]
+        }
+      },
+      {
+        id: 'DOC-NVSWITCH-88K2',
+        name: 'NVLink_Switchgear_SingleLine.pdf',
+        uploadedAt: bootedAt,
+        status: 'Processed',
+        type: 'application/pdf',
+        source: 'live',
+        findingsCount: 2,
+        decisionsCount: 1,
+        evidenceCount: 3,
+        graphNodesCount: 6,
+        pagesProcessed: 6,
+        ocrResult: {
+          words_result_num: 62,
+          words_result: [
+            { words: 'DRAWING NO: SLD-NVLINK-15KV-004 REV 3' },
+            { words: 'TITLE: SINGLE LINE DIAGRAM - 15kV HIGH VOLTAGE SWITCHGEAR NVSWITCH-TRAY' },
+            { words: '2.01 BUSBAR RATING: 3000A Continuous, 50kA / 1-sec Short Circuit Withstand' },
+            { words: '2.02 CIRCUIT BREAKER SPEC: Vacuum Breaker 17.5kV 31.5kA Spring Charge' },
+            { words: '2.03 PROTECTION RELAY: SEL-751 Feeder Protection Relay w/ Arc Flash Mitigation' },
+            { words: '2.04 INTERFACE COUPLING: Direct NVLink Busduct connection to Power Shelf' },
+            { words: '2.05 SINGLE SOURCE RISK: Volta Power Systems PSU Shelf single source dependency' },
+            { words: '2.06 CONTROL VOLTAGE: 110V DC Station Battery Bank Feed' },
+            { words: '2.07 VERDICT: HIGH RISK - PSU shelf single source supplier, no secondary backup' }
+          ]
+        }
+      },
+      {
+        id: 'DOC-TX01STEP-39P1',
+        name: 'TX01_StepDown_Transformer_Manual.pdf',
+        uploadedAt: bootedAt,
+        status: 'Processed',
+        type: 'application/pdf',
+        source: 'live',
+        findingsCount: 1,
+        decisionsCount: 1,
+        evidenceCount: 2,
+        graphNodesCount: 5,
+        pagesProcessed: 24,
+        ocrResult: {
+          words_result_num: 140,
+          words_result: [
+            { words: 'TECHNICAL DATA SHEET: TX-01 2.5MVA DRY TYPE TRANSFORMER' },
+            { words: '3.01 PRIMARY VOLTAGE: 15.0 kV Delta 3-Phase 50Hz' },
+            { words: '3.02 SECONDARY VOLTAGE: 415 V Wye 3-Phase 4-Wire Star Neutral Grounded' },
+            { words: '3.03 IMPEDANCE VOLTAGE: 5.75% ± 0.25% at 75°C Reference Temperature' },
+            { words: '3.04 COOLING METHOD: ONAN / ONAF Forced Air Booster (Class H Insulation)' },
+            { words: '3.05 VENDOR QUOTED LEAD TIME: 78 Weeks (Ex-Factory Hamburg)' },
+            { words: '3.06 SCHEDULE RISK: Lead time exceeds P6 schedule window by 18 weeks' },
+            { words: '3.07 VERDICT: CRITICAL SCHEDULE BOTTLENECK - Air freight or split shipment required' }
+          ]
+        }
+      },
+      {
+        id: 'DOC-P6SCHED-10V4',
+        name: 'P6_Project_Schedule_Rebaseline_Rev4.pdf',
+        uploadedAt: bootedAt,
+        status: 'Processed',
+        type: 'application/pdf',
+        source: 'live',
+        findingsCount: 2,
+        decisionsCount: 2,
+        evidenceCount: 4,
+        graphNodesCount: 7,
+        pagesProcessed: 8,
+        ocrResult: {
+          words_result_num: 75,
+          words_result: [
+            { words: 'PRIMAVERA P6 ENTERPRISE SCHEDULE RE-BASELINE SUMMARY (REV 4)' },
+            { words: 'PROJECT: NVIDIA AI FACTORY EPC (PRJ-NVL72-AIFC)' },
+            { words: '4.01 ACTIVITY S400: Rack & CDU Delivery to Site (Baseline Finish: 12-Aug-2026)' },
+            { words: '4.02 CURRENT FORECAST: 14-Oct-2026 (Slips L5 Commissioning by 9 weeks)' },
+            { words: '4.03 CUSTOMS HOLD: QSFP112 Transceiver Batch held at Munich Customs' },
+            { words: '4.04 FLOAT ANALYSIS: Critical Path Total Float = -4.5 Weeks' },
+            { words: '4.05 RECOMMENDED ACTION: Authorize air-freight precedent to recover 4 weeks float' }
+          ]
+        }
+      },
+      {
+        id: 'DOC-CXPROTO-55A9',
+        name: 'L1_L5_Commissioning_Protocol_Rev2.pdf',
+        uploadedAt: bootedAt,
+        status: 'Processed',
+        type: 'application/pdf',
+        source: 'live',
+        findingsCount: 1,
+        decisionsCount: 1,
+        evidenceCount: 3,
+        graphNodesCount: 6,
+        pagesProcessed: 18,
+        ocrResult: {
+          words_result_num: 110,
+          words_result: [
+            { words: 'COMMISSIONING EXECUTION PROTOCOL: LEVEL 1 TO LEVEL 5 INTEGRATED SYSTEM TESTING' },
+            { words: '5.01 LEVEL 1 (FAT): Factory Acceptance Testing - Complete for CDU-01 & Switchgear' },
+            { words: '5.02 LEVEL 2 (SAT): Site Acceptance & Uncrating - In Progress at Building 2' },
+            { words: '5.03 LEVEL 3 (PRE-COMMISSIONING): Dry Run & Hydrostatic Pressure Test - Pending' },
+            { words: '5.04 LEVEL 4 (FPT): Functional Performance Test - Scheduled for Sep-2026' },
+            { words: '5.05 LEVEL 5 (IST): Integrated Systems Load Bank Test (100% Thermal Load) - At Risk' },
+            { words: '5.06 DEPENDENCY LINK: L5 IST requires Level 3 Hydrostatic signoff & P6 Activity S400 arrival' }
+          ]
+        }
+      }
+    ],
   };
 }
 

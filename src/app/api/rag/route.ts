@@ -117,45 +117,48 @@ ${contextStr}
 
     // 4. Gemini Generation
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts: [{ text: systemPrompt }, { text: `Query: ${query}` }] }],
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              answer: { type: Type.STRING, description: "The final synthesized answer with inline citations." },
-              reasoningTrace: { type: Type.STRING, description: "A brief trace explaining how graph facts and document context were combined." }
-            },
-            required: ["answer", "reasoningTrace"]
+      if (process.env.GEMINI_API_KEY) {
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: [{ role: 'user', parts: [{ text: systemPrompt }, { text: `Query: ${query}` }] }],
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                answer: { type: Type.STRING, description: "The final synthesized answer with inline citations." },
+                reasoningTrace: { type: Type.STRING, description: "A brief trace explaining how graph facts and document context were combined." }
+              },
+              required: ["answer", "reasoningTrace"]
+            }
           }
-        }
-      });
+        });
 
-      const parsedResponse = JSON.parse(response.text || '{"answer":"Failed to generate answer", "reasoningTrace": ""}');
+        const parsedResponse = JSON.parse(response.text || '{"answer":"Failed to generate answer", "reasoningTrace": ""}');
 
-      return NextResponse.json({
-        answer: parsedResponse.answer,
-        graphFacts: graphFacts.slice(0, 5),
-        textChunks: textChunks.slice(0, 4),
-        reasoningTrace: parsedResponse.reasoningTrace
-      });
+        return NextResponse.json({
+          answer: parsedResponse.answer,
+          graphFacts: graphFacts.slice(0, 5),
+          textChunks: textChunks.slice(0, 4),
+          reasoningTrace: parsedResponse.reasoningTrace
+        });
+      }
     } catch (llmError: any) {
-      console.warn("Gemini LLM Call failed, returning contextual summary fallback:", llmError.message);
-      // Smart Fallback synthesis if LLM key is unavailable or rate-limited
-      const summaryText = `Based on the project knowledge base, here are the details for your query "${query}":\n\n` +
-        textChunks.slice(0, 3).map(c => `• ${c.text} (Source: [Doc: ${c.sourceDoc}])`).join('\n') +
-        `\n\nGraph Connections:\n` +
-        graphFacts.slice(0, 3).map(g => `• [Graph: ${g.node}] ${g.edge} ${g.target}`).join('\n');
-
-      return NextResponse.json({
-        answer: summaryText,
-        graphFacts: graphFacts.slice(0, 5),
-        textChunks: textChunks.slice(0, 4),
-        reasoningTrace: "Synthesized via ET Hybrid RAG Index using stored Graph Facts and Document Findings."
-      });
+      console.warn("Gemini LLM Call note (falling back to store synthesis):", llmError?.message || llmError);
     }
+
+    // Smart Fallback synthesis if LLM key is unavailable, invalid, or rate-limited
+    const summaryText = `Based on the project knowledge base, here are the details for your query "${query}":\n\n` +
+      textChunks.slice(0, 3).map(c => `• ${c.text} (Source: [Doc: ${c.sourceDoc}])`).join('\n') +
+      `\n\nGraph Connections:\n` +
+      graphFacts.slice(0, 3).map(g => `• [Graph: ${g.node}] ${g.edge} ${g.target}`).join('\n');
+
+    return NextResponse.json({
+      answer: summaryText,
+      graphFacts: graphFacts.slice(0, 5),
+      textChunks: textChunks.slice(0, 4),
+      reasoningTrace: "Synthesized via ET Hybrid RAG Index using stored Graph Facts and Document Findings."
+    });
 
   } catch (error: any) {
     console.error("Hybrid RAG Error:", error);
