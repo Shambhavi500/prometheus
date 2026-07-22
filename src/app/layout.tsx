@@ -18,8 +18,8 @@ const jbMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'PROMETHEUS — Engineering Intelligence Workspace',
-  description: 'Execution-intelligence layer for mission-critical EPC programmes.',
+  title: 'ET – Engineering Intelligence Platform',
+  description: 'AI document intelligence and execution platform for mission-critical EPC programmes.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

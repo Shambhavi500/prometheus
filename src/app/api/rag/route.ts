@@ -29,6 +29,15 @@ export async function POST(request: Request) {
     const textChunks = await globalVectorStore.search(query, 5);
 
     // 3. Merge Context
+    if (graphFacts.length === 0 && textChunks.length === 0) {
+      return NextResponse.json({
+        answer: "No uploaded documents available for retrieval.",
+        reasoningTrace: "RAG index returned 0 matching graph nodes and 0 vector chunks for this query.",
+        graphFacts: [],
+        textChunks: []
+      });
+    }
+
     let contextStr = ``;
     if (graphFacts.length > 0) {
       contextStr += `--- LAYER 1: STRUCTURAL GRAPH FACTS ---\n`;

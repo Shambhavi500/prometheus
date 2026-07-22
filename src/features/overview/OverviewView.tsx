@@ -2,297 +2,540 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDecisions, useSupplyChain, useSpecRows, useAudit, useDocuments, useEntityIndex } from '@/core/api/hooks';
+import { 
+  useDecisions, 
+  useSpecRows, 
+  useDocuments, 
+  useEntityIndex,
+  useDecisionActions
+} from '@/core/api/hooks';
 import { useWorkspace } from '@/core/state/workspace';
 import { StatusBadge } from '@/components/StatusBadge';
-import { LiveBadge } from '@/components/LiveBadge';
-import { GraphPathViewer } from '@/features/knowledge/components/GraphPathViewer';
+
+interface ChatMessage {
+  sender: 'user' | 'ai';
+  text: string;
+  reasoningTrace?: string;
+  graphFacts?: Array<{ node: string; edge: string; target: string; sourceDoc: string }>;
+  textChunks?: Array<{ id: string; text: string; sourceDoc: string; similarityScore?: number }>;
+  timestamp: string;
+}
 
 export function OverviewView() {
   const router = useRouter();
-  const [ragQuery, setRagQuery] = useState('');
-  const [ragResponse, setRagResponse] = useState<any>(null);
-  const [isRagLoading, setIsRagLoading] = useState(false);
+  const selectDecision = useWorkspace((s) => s.selectDecision);
+  
+  // Server state hooks
   const { data: decData } = useDecisions();
-  const { data: supply } = useSupplyChain();
   const { data: docData } = useDocuments();
   const { data: entityData } = useEntityIndex();
-  const selectDecision = useWorkspace((s) => s.selectDecision);
+  const { data: specData } = useSpecRows();
+  const { approve } = useDecisionActions();
 
-  const handleRagSearch = async () => {
-    if (!ragQuery.trim()) return;
-    setIsRagLoading(true);
-    try {
-      const res = await fetch('/api/rag', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: ragQuery })
-      });
-      const data = await res.json();
-      setRagResponse(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsRagLoading(false);
-    }
-  };
+  // Chatbot & Interactive UI states
+  const [ragQuery, setRagQuery] = useState('');
+  const [isRagLoading, setIsRagLoading] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [showOcrText, setShowOcrText] = useState(false);
 
-  const getAgentRoute = (agentName: string) => {
-    if (agentName.includes('Schedule')) return '/schedule-risk';
-    if (agentName.includes('Spec')) return '/spec-compliance';
-    if (agentName.includes('Supply')) return '/supply-chain';
-    if (agentName.includes('Commissioning')) return '/commissioning';
-    if (agentName.includes('Knowledge')) return '/knowledge';
-    return '/console';
-  };
+  const documents = docData?.documents ?? [];
+  const specRows = specData?.rows ?? [];
 
   const decisions = useMemo(() => {
     return (decData?.decisions ?? []).sort((a, b) => {
-      const s = { Critical: 0, High: 1, Medium: 2, Low: 3 } as any;
+      const s = { Critical: 0, High: 1, Medium: 2, Low: 3 } as Record<string, number>;
       const statusDelta = (a.status === 'Pending' ? 0 : 1) - (b.status === 'Pending' ? 0 : 1);
       if (statusDelta !== 0) return statusDelta;
       return (s[a.severity] ?? 9) - (s[b.severity] ?? 9);
     });
   }, [decData]);
 
-  const criticalPending = decisions.filter(d => d.status === 'Pending' && d.severity === 'Critical');
-  const primaryDecision = criticalPending[0];
-  const primaryFinding = primaryDecision ? decData?.findings[primaryDecision.findingId] : null;
+  const findingsMap = decData?.findings ?? {};
+  const findingsList = Object.values(findingsMap);
 
-  const vendorCritical = supply?.points.filter((p: any) => p.riskLevel === 'Critical').length ?? 0;
-  const { data: specData } = useSpecRows();
-  const { data: auditData } = useAudit();
+  // Active doc for OCR inspector
+  const activeOcrDoc = useMemo(() => {
+    if (selectedDocId) return documents.find(d => d.id === selectedDocId);
+    return documents.find(d => d.ocrResult) || documents[0];
+  }, [documents, selectedDocId]);
 
-  const specRows = specData?.rows ?? [];
-  const compliantCount = specRows.filter(r => r.verdict === 'Compliant').length;
-  const specCompliancePct = specRows.length > 0 ? ((compliantCount / specRows.length) * 100).toFixed(1) : '100.0';
+  // Handle RAG Chatbot query
+  const handleRagSearch = async (queryText?: string) => {
+    const q = queryText || ragQuery;
+    if (!q.trim() || isRagLoading) return;
 
-  const openRisks = Object.values(decData?.findings ?? {}).length;
-  const liveRisks = Object.values(decData?.findings ?? {}).filter(f => f.source === 'live').length;
-  const operationalHealth = Math.max(0, 100 - (criticalPending.length * 5) - (vendorCritical * 3) - ((specRows.length - compliantCount) * 2)).toFixed(1);
+    const userMsg: ChatMessage = {
+      sender: 'user',
+      text: q,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
 
-  const auditEntries = auditData?.entries ?? [];
+    setMessages(prev => [...prev, userMsg]);
+    setRagQuery('');
+    setIsRagLoading(true);
+
+    try {
+      const res = await fetch('/api/rag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q })
+      });
+      const data = await res.json();
+
+      const aiMsg: ChatMessage = {
+        sender: 'ai',
+        text: data.answer || "No uploaded documents available for retrieval.",
+        reasoningTrace: data.reasoningTrace,
+        graphFacts: data.graphFacts || [],
+        textChunks: data.textChunks || [],
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+    } catch (e: any) {
+      setMessages(prev => [...prev, {
+        sender: 'ai',
+        text: `Error querying ET RAG Engine: ${e.message}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }]);
+    } finally {
+      setIsRagLoading(false);
+    }
+  };
 
   return (
     <div className="page" style={{ background: 'var(--bg-0)' }}>
-      {/* Top Bar */}
+      {/* Top Header Bar */}
       <div className="page__header">
-        <h1 className="page__title">Mission Control</h1>
-        <span className="page__meta">Project Meghdoot (NM-1)</span>
+        <div>
+          <h1 className="page__title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            Mission Control
+            <span style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: 'var(--teal-dim)', border: '1px solid var(--teal-line)', color: 'var(--teal)' }}>
+              ET ENGINEERING INTELLIGENCE
+            </span>
+          </h1>
+        </div>
         <span className="page__spacer" />
         <span className="page__meta" style={{ display: 'flex', gap: '24px' }}>
-          <span>Tenant: <span style={{ color: 'var(--txt-hi)' }}>PROMETHEUS</span></span>
-          <span>Role: <span style={{ color: 'var(--txt-hi)' }}>Project Director</span></span>
+          <span>Platform: <span style={{ color: 'var(--txt-hi)' }}>ET</span></span>
+          <span>Role: <span style={{ color: 'var(--txt-hi)' }}>Lead Engineer</span></span>
         </span>
       </div>
 
       <div className="page__body" style={{ overflowY: 'auto', display: 'block', paddingBottom: '96px' }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '64px 32px 0', display: 'flex', flexDirection: 'column', gap: '64px' }}>
-          
+        <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '32px 32px 0', display: 'flex', flexDirection: 'column', gap: '40px' }}>
 
-          {/* RAG DEEP DIVE (Replacing the Search bar but keeping interactability) */}
-          <section style={{ display: 'flex', flexDirection: 'column', gap: '24px', borderBottom: '1px solid var(--line-strong)', paddingBottom: '64px' }}>
-            <h2 style={{ fontSize: '18px', color: 'var(--txt-hi)', fontWeight: 300 }}>Hybrid RAG Retrieval State</h2>
-            <div style={{ display: 'flex', gap: '8px' }}>
+          {/* ========================================================================= */}
+          {/* 1. TOP OF PAGE CHATBOT & SEARCH INTERFACE (FIRST THING USERS SEE)        */}
+          {/* ========================================================================= */}
+          <section style={{ background: 'var(--bg-1)', border: '1px solid var(--teal-line)', borderRadius: '12px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 8px 32px rgba(0, 240, 255, 0.05)' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <h2 style={{ fontSize: '20px', color: 'var(--txt-hi)', margin: 0, fontWeight: 400 }}>
+                  Ask ET anything...
+                </h2>
+                <span className="mono" style={{ fontSize: '10px', color: 'var(--teal)', background: 'var(--teal-dim)', padding: '2px 8px', borderRadius: '4px' }}>
+                  HYBRID RAG SEARCH
+                </span>
+              </div>
+              <p style={{ fontSize: '13px', color: 'var(--txt-md)', marginTop: '4px', margin: 0 }}>
+                Query uploaded engineering documents, extract specifications, or search verified compliance evidence.
+              </p>
+            </div>
+
+            {/* Main Input Box */}
+            <div style={{ display: 'flex', gap: '12px' }}>
               <input 
                 type="text" 
                 className="ui-input" 
-                style={{ flex: 1, padding: '12px 16px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--bg-1)', color: 'var(--txt-hi)' }} 
-                placeholder="Query the RAG engine manually (e.g., Lead time for TX-01)..."
+                style={{ flex: 1, padding: '14px 18px', fontSize: '14px', borderRadius: '6px', border: '1px solid var(--teal-line)', background: 'var(--bg-0)', color: 'var(--txt-hi)' }} 
+                placeholder="Search uploaded documents or ask a technical question (e.g. Lead time for TX-01)..."
                 value={ragQuery}
                 onChange={(e) => setRagQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleRagSearch()}
               />
-              <button className="btn btn--approve" onClick={handleRagSearch} disabled={isRagLoading}>
-                {isRagLoading ? 'Retrieving...' : 'Query'}
+              <button 
+                className="btn btn--approve" 
+                onClick={() => handleRagSearch()} 
+                disabled={isRagLoading || !ragQuery.trim()}
+                style={{ padding: '0 28px', fontSize: '14px' }}
+              >
+                {isRagLoading ? 'Searching...' : 'Search Documents'}
               </button>
             </div>
 
-            {/* Always show the RAG state, either from manual query or active primary decision */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
-              {/* Evidence Chunks */}
-              <div style={{ background: 'var(--bg-1)', border: '1px solid var(--teal-line)', borderRadius: 'var(--radius)', padding: '24px' }}>
-                <div style={{ fontSize: '11px', color: 'var(--teal)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '16px' }}>Retrieved Evidence Chunks</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {(ragResponse?.textChunks || primaryFinding?.citations || []).length > 0 ? (
-                    (ragResponse?.textChunks || primaryFinding?.citations || []).slice(0, 3).map((chunk: any, i: number) => (
-                      <div key={i} style={{ borderLeft: '2px solid var(--teal)', paddingLeft: '12px', fontSize: '12px', color: 'var(--txt-hi)' }}>
-                        <div className="mono" style={{ fontSize: '10px', color: 'var(--teal)', marginBottom: '4px' }}>Source: {chunk.sourceDoc || chunk.docId}</div>
-                        "{chunk.text || chunk.quote}"
-                      </div>
-                    ))
-                  ) : (
-                    <div style={{ color: 'var(--txt-md)' }}>No evidence retrieved yet.</div>
-                  )}
+            {/* Preset Examples per Prompt */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', color: 'var(--txt-md)', marginRight: '4px' }}>Examples:</span>
+              {[
+                "Summarize uploaded specification",
+                "Show compliance issues",
+                "Find schedule risks",
+                "Explain this drawing"
+              ].map((example, i) => (
+                <button
+                  key={i}
+                  className="btn"
+                  style={{ fontSize: '11px', padding: '5px 12px', background: 'var(--bg-2)' }}
+                  onClick={() => handleRagSearch(example)}
+                >
+                  • {example}
+                </button>
+              ))}
+            </div>
+
+            {/* Message Thread */}
+            {messages.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '420px', overflowY: 'auto', marginTop: '8px' }}>
+                {messages.map((msg, i) => (
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start', maxWidth: msg.sender === 'user' ? '80%' : '100%', width: msg.sender === 'ai' ? '100%' : 'auto' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--txt-md)' }}>
+                      {msg.sender === 'user' ? 'Lead Engineer' : 'ET Assistant'} · {msg.timestamp}
+                    </div>
+
+                    <div style={{ 
+                      background: msg.sender === 'user' ? 'var(--teal-dim)' : 'var(--bg-0)', 
+                      border: `1px solid ${msg.sender === 'user' ? 'var(--teal-line)' : 'var(--line)'}`, 
+                      padding: '16px', 
+                      borderRadius: '8px',
+                      color: 'var(--txt-hi)',
+                      fontSize: '13px',
+                      lineHeight: 1.5
+                    }}>
+                      <div>{msg.text}</div>
+
+                      {msg.sender === 'ai' && msg.textChunks && msg.textChunks.length > 0 && (
+                        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ fontSize: '10px', color: 'var(--teal)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                            Evidence Citations
+                          </div>
+                          {msg.textChunks.map((chunk, cidx) => (
+                            <div key={cidx} style={{ background: 'var(--bg-1)', borderLeft: '2px solid var(--teal)', padding: '8px 12px', borderRadius: '0 4px 4px 0', fontSize: '12px' }}>
+                              <div style={{ fontSize: '10px', color: 'var(--txt-md)', marginBottom: '2px' }}>Source: {chunk.sourceDoc}</div>
+                              <div style={{ color: 'var(--txt-hi)' }}>"{chunk.text}"</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* ========================================================================= */}
+          {/* 2. DOCUMENT SUMMARY                                                       */}
+          {/* ========================================================================= */}
+          <section style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: '8px', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h2 style={{ fontSize: '16px', color: 'var(--txt-hi)', margin: 0, fontWeight: 500 }}>
+                  Document Summary
+                </h2>
+                <div style={{ fontSize: '12px', color: 'var(--txt-md)', marginTop: '2px' }}>
+                  Uploaded project documentation status & analysis manifest
                 </div>
               </div>
 
-              {/* KG Nodes & Reasoning */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--radius)', padding: '24px' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--txt-md)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '16px' }}>Knowledge Graph Nodes Activated</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {(ragResponse?.graphFacts || primaryFinding?.entityIds || []).length > 0 ? (
-                       (ragResponse?.graphFacts ? ragResponse.graphFacts.map((f: any) => f.node) : primaryFinding!.entityIds).map((node: string, i: number) => (
-                        <span key={i} style={{ background: 'var(--bg-2)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', color: 'var(--txt-hi)', border: '1px solid var(--line)' }}>{node}</span>
-                      ))
-                    ) : (
-                      <div style={{ color: 'var(--txt-md)' }}>Waiting for retrieval traversal.</div>
-                    )}
+              <button 
+                className="btn" 
+                style={{ fontSize: '12px', padding: '6px 14px' }}
+                onClick={() => router.push('/')}
+              >
+                + Upload Engineering Document
+              </button>
+            </div>
+
+            {documents.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {documents.map((doc, idx) => (
+                  <div key={`${doc.id}-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-0)', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span className="mono" style={{ fontSize: '11px', color: 'var(--teal)' }}>[DOC]</span>
+                      <div>
+                        <div style={{ fontSize: '13px', color: 'var(--txt-hi)', fontWeight: 500 }}>{doc.name}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--txt-md)' }}>Uploaded: {new Date(doc.uploadedAt).toLocaleTimeString()} · Type: {doc.type}</div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'var(--teal-dim)', color: 'var(--teal)', border: '1px solid var(--teal-line)' }}>
+                        Status: {doc.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ padding: '24px', background: 'var(--bg-0)', borderRadius: '6px', border: '1px dashed var(--line)', textAlign: 'center', color: 'var(--txt-md)', fontSize: '13px' }}>
+                No uploaded documents. Upload an engineering document on the home page to begin analysis.
+              </div>
+            )}
+          </section>
+
+          {/* ========================================================================= */}
+          {/* 3. OCR RESULTS                                                            */}
+          {/* ========================================================================= */}
+          <section style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: '8px', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h2 style={{ fontSize: '16px', color: 'var(--txt-hi)', margin: 0, fontWeight: 500 }}>
+                  OCR Results
+                </h2>
+                <div style={{ fontSize: '12px', color: 'var(--txt-md)', marginTop: '2px' }}>
+                  Extracted optical text stream and document structure analysis
+                </div>
+              </div>
+
+              {documents.length > 0 && (
+                <select 
+                  className="ui-input"
+                  style={{ padding: '6px 12px', fontSize: '12px', borderRadius: '4px', background: 'var(--bg-2)', color: 'var(--txt-hi)', border: '1px solid var(--line)' }}
+                  value={activeOcrDoc?.id || ''}
+                  onChange={(e) => setSelectedDocId(e.target.value)}
+                >
+                  {documents.map((d, idx) => (
+                    <option key={`${d.id}-${idx}`} value={d.id}>{d.name} ({d.id})</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {activeOcrDoc ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', background: 'var(--bg-0)', padding: '16px', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                  <div>
+                    <div style={{ fontSize: '10px', color: 'var(--txt-md)', textTransform: 'uppercase' }}>Pages</div>
+                    <div style={{ fontSize: '14px', color: 'var(--txt-hi)', fontWeight: 600, marginTop: '4px' }}>
+                      {activeOcrDoc.pagesProcessed ?? 1} Page
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', color: 'var(--txt-md)', textTransform: 'uppercase' }}>Extracted Words / Lines</div>
+                    <div style={{ fontSize: '14px', color: 'var(--txt-hi)', fontWeight: 600, marginTop: '4px' }}>
+                      {activeOcrDoc.ocrResult?.words_result_num ?? 'Standard OCR Parsing'}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', color: 'var(--txt-md)', textTransform: 'uppercase' }}>Structure Metadata</div>
+                    <div style={{ fontSize: '13px', color: 'var(--txt-md)', marginTop: '4px' }}>
+                      Accurate Basic Mode
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', color: 'var(--txt-md)', textTransform: 'uppercase' }}>OCR Engine</div>
+                    <div style={{ fontSize: '13px', color: 'var(--teal)', fontWeight: 500, marginTop: '4px' }}>
+                      Baidu High-Accuracy Engine
+                    </div>
                   </div>
                 </div>
-                
-                {ragResponse && (
-                  <div style={{ background: 'var(--teal-dim)', border: '1px solid var(--teal-line)', borderRadius: 'var(--radius)', padding: '24px' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--teal)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '8px' }}>Generated Answer</div>
-                    <div style={{ color: 'var(--txt-hi)', lineHeight: 1.5 }}>{ragResponse.answer}</div>
+
+                {activeOcrDoc.ocrResult?.words_result && activeOcrDoc.ocrResult.words_result.length > 0 ? (
+                  <div>
+                    <button 
+                      className="btn" 
+                      style={{ fontSize: '12px', padding: '6px 14px' }}
+                      onClick={() => setShowOcrText(!showOcrText)}
+                    >
+                      {showOcrText ? '▲ Hide Extracted Text' : '▼ View Extracted Text'}
+                    </button>
+
+                    {showOcrText && (
+                      <div className="mono" style={{ marginTop: '12px', padding: '16px', background: 'var(--bg-0)', border: '1px solid var(--teal-line)', borderRadius: '6px', fontSize: '11px', color: 'var(--txt-hi)', maxHeight: '220px', overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
+                        {activeOcrDoc.ocrResult.words_result.map((line, idx) => (
+                          <div key={idx} style={{ padding: '2px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                            <span style={{ color: 'var(--txt-md)', marginRight: '12px' }}>[{String(idx + 1).padStart(2, '0')}]</span>
+                            {line.words}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ padding: '12px', background: 'var(--bg-0)', borderRadius: '6px', border: '1px dashed var(--line)', fontSize: '12px', color: 'var(--txt-md)' }}>
+                    Specification document parsed via Gemini. Direct raw OCR text stream not attached to this file.
                   </div>
                 )}
               </div>
-            </div>
+            ) : (
+              <div style={{ padding: '24px', background: 'var(--bg-0)', borderRadius: '6px', border: '1px dashed var(--line)', textAlign: 'center', color: 'var(--txt-md)', fontSize: '13px' }}>
+                No OCR results available.
+              </div>
+            )}
           </section>
 
-          {/* MAIN GRID - Active Insights */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)', gap: '64px' }}>
-            
-            {/* LEFT COLUMN: Critical Focus */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '56px' }}>
-              
-              {/* PRIMARY DECISION */}
-              {primaryDecision && (
-                <section>
-                  <header style={{ fontSize: 'var(--fs-10)', color: 'var(--txt-lo)', textTransform: 'uppercase', letterSpacing: '0.12em', borderBottom: '1px solid var(--line-strong)', paddingBottom: '12px', marginBottom: '24px' }}>
-                    Latest Recommendation Action
-                  </header>
-                  <div className="dblock" style={{ margin: 0, border: '1px solid var(--red-dim)' }} id="walkthrough-live-finding">
-                    <div className="dblock__head" style={{ borderBottomColor: 'var(--red-dim)', background: 'var(--red-dim)' }}>
-                      <span style={{ color: 'var(--red)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        CRITICAL: {primaryFinding?.title ?? 'Risk Detected'}
-                        {primaryDecision.source === 'live' && <LiveBadge />}
-                      </span>
-                      <span>{primaryDecision.agentName}</span>
-                    </div>
-                    <div className="dblock__body" style={{ padding: '24px' }}>
-                      <div className="dblock__action" style={{ fontSize: 'var(--fs-16)' }}>{primaryDecision.action}</div>
-                      <div className="dblock__impact" style={{ marginTop: '8px' }}>{primaryDecision.impact}</div>
-                    </div>
-                    <div className="dblock__buttons" style={{ padding: '16px 24px', borderTopColor: 'var(--line)' }}>
-                      <button 
-                        className="btn btn--approve" 
-                        onClick={() => {
-                          selectDecision(primaryDecision.id);
-                          router.push(getAgentRoute(primaryDecision.agentName));
-                        }}
-                      >
-                        Review Full Context
-                      </button>
-                    </div>
-                  </div>
-                </section>
-              )}
+          {/* ========================================================================= */}
+          {/* 4. GEMINI STRUCTURED EXTRACTION                                           */}
+          {/* ========================================================================= */}
+          <section style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: '8px', padding: '24px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '16px', color: 'var(--txt-hi)', margin: 0, fontWeight: 500 }}>
+                Gemini Structured Extraction Results
+              </h2>
+              <div style={{ fontSize: '12px', color: 'var(--txt-md)', marginTop: '2px' }}>
+                Extracted engineering parameters, equipment tags, required specifications, and compliance verdicts
+              </div>
+            </div>
 
-              {/* DECISION QUEUE PREVIEW */}
-              <section>
-                <header style={{ fontSize: 'var(--fs-10)', color: 'var(--txt-lo)', textTransform: 'uppercase', letterSpacing: '0.12em', borderBottom: '1px solid var(--line-strong)', paddingBottom: '12px', marginBottom: '24px' }}>
-                  Decision Queue
-                </header>
-                <div className="vt" style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius)', background: 'var(--bg-1)' }}>
-                  <div className="vt__header" style={{ gridTemplateColumns: '92px 1fr 120px 86px', background: 'transparent' }}>
-                    <div>Severity</div><div>Decision</div><div>Agent</div><div>Status</div>
-                  </div>
-                  <div className="vt__scroll" style={{ overflow: 'hidden' }}>
-                    {decisions.slice(0, 5).map(d => (
-                      <div 
-                        key={d.id} 
-                        className="vt__row" 
-                        style={{ gridTemplateColumns: '92px 1fr 120px 86px', height: '44px', background: 'transparent' }}
-                        onClick={() => {
-                          selectDecision(d.id);
-                          router.push(getAgentRoute(d.agentName));
-                        }}
-                      >
-                        <div><StatusBadge label={d.severity} /></div>
-                        <div style={{ color: 'var(--txt-hi)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          {d.action}
-                          {d.source === 'live' && <LiveBadge />}
-                        </div>
-                        <div>{d.agentName}</div>
-                        <div><StatusBadge label={d.status} /></div>
-                      </div>
+            {specRows.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--line)', color: 'var(--txt-md)', height: '36px' }}>
+                      <th style={{ padding: '8px' }}>Equipment Tag</th>
+                      <th style={{ padding: '8px' }}>Parameter</th>
+                      <th style={{ padding: '8px' }}>Required Spec</th>
+                      <th style={{ padding: '8px' }}>Submitted Value</th>
+                      <th style={{ padding: '8px' }}>Verdict</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {specRows.map(r => (
+                      <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', height: '40px' }}>
+                        <td style={{ padding: '8px', color: 'var(--teal)', fontWeight: 500 }}>{r.equipmentTag}</td>
+                        <td style={{ padding: '8px', color: 'var(--txt-hi)' }}>{r.parameter}</td>
+                        <td style={{ padding: '8px', color: 'var(--txt-hi)' }}>{r.required}</td>
+                        <td style={{ padding: '8px', color: 'var(--txt-hi)' }}>{r.submitted}</td>
+                        <td style={{ padding: '8px' }}><StatusBadge label={r.verdict} /></td>
+                      </tr>
                     ))}
-                  </div>
-                </div>
-              </section>
-              
-              {/* KNOWLEDGE HIGHLIGHT */}
-              <section>
-                <header style={{ fontSize: 'var(--fs-10)', color: 'var(--txt-lo)', textTransform: 'uppercase', letterSpacing: '0.12em', borderBottom: '1px solid var(--line-strong)', paddingBottom: '12px', marginBottom: '24px' }}>
-                  Knowledge Surface
-                </header>
-                <div style={{ display: 'flex', border: '1px solid var(--line-strong)', borderRadius: 'var(--radius)', background: 'var(--bg-1)', overflow: 'hidden' }}>
-                  
-                  {/* Left Box (Historical Info) */}
-                  <div style={{ width: '320px', display: 'flex', flexDirection: 'column', gap: '8px', padding: '20px 24px', background: 'var(--teal-dim)', borderRight: '1px solid var(--teal-line)' }}>
-                    <div className="precedent__meta">
-                      <span className="precedent__tag">NM-0</span>
-                      <span className="precedent__cat">Schedule Recovery</span>
-                    </div>
-                    <div className="precedent__title">Phased Energization Sequence</div>
-                  </div>
-                  
-                  {/* Divider / Arrow */}
-                  <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', borderRight: '1px solid var(--line)', fontSize: 'var(--fs-10)', color: 'var(--txt-lo)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                    Recovered
-                  </div>
-                  
-                  {/* Right Box (Outcome & Action) */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '20px', padding: '20px 24px' }}>
-                    <div className="precedent__outcome" style={{ margin: 0 }}>Split switchgear testing into two phases to avoid critical path delay during early procurement faults.</div>
-                    <button className="btn" style={{ alignSelf: 'flex-start' }} onClick={() => router.push('/knowledge')}>View Decision Memory</button>
-                  </div>
-                  
-                </div>
-              </section>
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ padding: '24px', background: 'var(--bg-0)', borderRadius: '6px', border: '1px dashed var(--line)', textAlign: 'center', color: 'var(--txt-md)', fontSize: '13px' }}>
+                No extracted entities.
+              </div>
+            )}
+          </section>
 
+          {/* ========================================================================= */}
+          {/* 5. FINDINGS & RECOMMENDATIONS                                             */}
+          {/* ========================================================================= */}
+          <section style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: '8px', padding: '24px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '16px', color: 'var(--txt-hi)', margin: 0, fontWeight: 500 }}>
+                EPC Findings & Action Recommendations
+              </h2>
+              <div style={{ fontSize: '12px', color: 'var(--txt-md)', marginTop: '2px' }}>
+                AI reasoned engineering deviations, schedule risks, and vendor bottlenecks
+              </div>
             </div>
 
-            {/* RIGHT COLUMN: Intelligence & Activity */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '56px' }}>
-              
-
-
-              {/* AGENT ACTIVITY FEED */}
-              <section>
-                <header style={{ fontSize: 'var(--fs-10)', color: 'var(--txt-lo)', textTransform: 'uppercase', letterSpacing: '0.12em', borderBottom: '1px solid var(--line-strong)', paddingBottom: '12px', marginBottom: '16px' }}>
-                  System Activity
-                </header>
-                <div className="audit" style={{ padding: 0, overflow: 'visible' }}>
-                  <div className="audit__row head" style={{ gridTemplateColumns: '60px 120px 1fr', padding: '12px 8px', borderBottomColor: 'var(--line)' }}>
-                    <div>Time</div><div>Agent</div><div>Activity</div>
-                  </div>
-                  {auditEntries.length === 0 ? (
-                    <div style={{ padding: '16px', color: 'var(--txt-md)' }}>No system activity recorded yet.</div>
-                  ) : (
-                    auditEntries.slice(0, 5).map((entry, idx) => {
-                      const time = new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                      const shortAgent = entry.actor.split(' ')[0].replace('Agent', '').replace('-', '');
-                      return (
-                        <div key={idx} className="audit__row" style={{ gridTemplateColumns: '60px 120px 1fr', padding: '12px 8px', border: 'none' }}>
-                          <div className="audit__ts">{time}</div>
-                          <div className="audit__action">{shortAgent}</div>
-                          <div className="audit__src" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.action} {entry.target}</div>
+            {findingsList.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {findingsList.map(f => {
+                  const matchingDec = decisions.find(d => d.findingId === f.id);
+                  return (
+                    <div key={f.id} style={{ border: '1px solid var(--line)', borderRadius: '6px', background: 'var(--bg-0)', padding: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <StatusBadge label={f.severity} />
+                          <span style={{ fontSize: '14px', color: 'var(--txt-hi)', fontWeight: 500 }}>{f.title}</span>
                         </div>
-                      );
-                    })
-                  )}
-                </div>
-              </section>
+                        <span style={{ fontSize: '11px', color: 'var(--txt-md)' }}>{f.agentName}</span>
+                      </div>
 
+                      <div style={{ fontSize: '13px', color: 'var(--txt-md)', lineHeight: 1.5, marginBottom: '12px' }}>
+                        <strong>Reason:</strong> {f.finding}
+                      </div>
+
+                      {f.citations && f.citations.length > 0 && (
+                        <div style={{ fontSize: '11px', color: 'var(--teal)', marginBottom: '12px' }}>
+                          <strong>Citation:</strong> {f.citations[0].docTitle} (Page {f.citations[0].page}) — "{f.citations[0].quote}"
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--line)', paddingTop: '12px' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--txt-hi)' }}>
+                          <strong>Recommendation:</strong> {f.recommendation}
+                        </div>
+
+                        {matchingDec && (
+                          <button 
+                            className="btn btn--approve" 
+                            style={{ fontSize: '11px', padding: '4px 12px' }}
+                            onClick={() => approve.mutate(matchingDec.id)}
+                            disabled={matchingDec.status !== 'Pending'}
+                          >
+                            {matchingDec.status === 'Signed' ? 'Approved' : 'Authorize Action'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ padding: '24px', background: 'var(--bg-0)', borderRadius: '6px', border: '1px dashed var(--line)', textAlign: 'center', color: 'var(--txt-md)', fontSize: '13px' }}>
+                No findings generated.
+              </div>
+            )}
+          </section>
+
+          {/* ========================================================================= */}
+          {/* 6. KNOWLEDGE GRAPH INTEGRATION CTA                                         */}
+          {/* ========================================================================= */}
+          <section style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: '8px', padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h2 style={{ fontSize: '16px', color: 'var(--txt-hi)', margin: 0, fontWeight: 500 }}>
+                  Knowledge Graph Updated
+                </h2>
+                <span className="badge badge--success" style={{ background: 'var(--teal-dim)', color: 'var(--teal)', border: '1px solid var(--teal-line)' }}>
+                  Active Memory
+                </span>
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--txt-md)', marginTop: '4px' }}>
+                Extracted entities, equipment dependencies, and precedent links have been mapped into the governing project graph.
+              </div>
             </div>
-          </div>
+
+            <button 
+              className="btn btn--approve" 
+              style={{ padding: '10px 20px', fontSize: '13px', whiteSpace: 'nowrap' }}
+              onClick={() => router.push('/explorer')}
+            >
+              Open Graph →
+            </button>
+          </section>
+
+          {/* ========================================================================= */}
+          {/* 7. EVIDENCE USED (RAG CONTEXT)                                             */}
+          {/* ========================================================================= */}
+          <section style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: '8px', padding: '24px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '16px', color: 'var(--txt-hi)', margin: 0, fontWeight: 500 }}>
+                Evidence Used
+              </h2>
+              <div style={{ fontSize: '12px', color: 'var(--txt-md)', marginTop: '2px' }}>
+                Verified document snippets and citation sources supporting current AI intelligence
+              </div>
+            </div>
+
+            {findingsList.some(f => f.citations && f.citations.length > 0) ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+                {findingsList.filter(f => f.citations?.length).slice(0, 4).map((f, i) => (
+                  <div key={i} style={{ background: 'var(--bg-0)', borderLeft: '3px solid var(--teal)', padding: '14px', borderRadius: '0 6px 6px 0', border: '1px solid var(--line)', borderLeftColor: 'var(--teal)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--teal)', fontWeight: 600, marginBottom: '4px' }}>
+                      Document: {f.citations[0].docTitle} (Pg {f.citations[0].page})
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--txt-hi)', lineHeight: 1.4 }}>
+                      "{f.citations[0].quote}"
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ padding: '24px', background: 'var(--bg-0)', borderRadius: '6px', border: '1px dashed var(--line)', textAlign: 'center', color: 'var(--txt-md)', fontSize: '13px' }}>
+                No indexed evidence.
+              </div>
+            )}
+          </section>
+
         </div>
       </div>
     </div>
   );
 }
-

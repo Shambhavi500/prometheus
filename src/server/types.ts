@@ -20,6 +20,11 @@ export interface UploadedDocument {
   decisionsCount: number;
   evidenceCount: number;
   graphNodesCount: number;
+  pagesProcessed?: number;
+  ocrResult?: {
+    words_result_num: number;
+    words_result: Array<{ words: string }>;
+  };
 }
 
 export interface TraceStep {

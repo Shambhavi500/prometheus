@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { extractDocumentSpecifications } from '@/core/utils/ai';
-import { getStore, makeIds, ingestDynamicSpec, ingestDynamicFinding, uploadDocument, updateDocumentStatus } from '@/server/store';
+import { getStore, makeIds, ingestDynamicSpec, ingestDynamicFinding, uploadDocument, updateDocumentStatus, updateDocumentOcr } from '@/server/store';
 import { evaluateDynamicExtraction } from '@/server/reasoning/spec-compliance';
 import { evaluateDynamicScheduleRisk } from '@/server/reasoning/schedule-risk';
 import { evaluateDynamicSupplyRisk } from '@/server/reasoning/supply-chain';
 import { evaluateDynamicCommissioningRisk } from '@/server/reasoning/commissioning';
+import { BaiduOcrClient } from '@/core/utils/baiduOcr';
 
 export async function POST(request: Request) {
   const encoder = new TextEncoder();
@@ -29,12 +30,33 @@ export async function POST(request: Request) {
         }
 
         send(`[00:01] Ingesting connected project documents...`);
-        send(`[00:03] Loading project context: Prometheus (NM-1)`);
+        send(`[00:03] Initializing ET Document Intelligence Engine...`);
         sendProgress(10);
         
         send(`[00:09] Initializing ingestion of user-uploaded document: ${fileName}...`);
         
+        const cleanName = fileName.split('.')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const docPrefix = (cleanName || 'FILE').substring(0, 8);
+        const uniqueSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+        const submittalTag = `SUB-${docPrefix}-${uniqueSuffix}`;
+        const docId = `DOC-${docPrefix}-${uniqueSuffix}`;
+
+        uploadDocument(docId, fileName, mimeType || 'application/pdf');
+
+        // Execute OCR Engine
         sendProgress(20);
+        send(`[00:12] Executing Baidu OCR Engine for text extraction & structure parsing...`);
+        let ocrResult = null;
+        try {
+          const ocrClient = new BaiduOcrClient();
+          ocrResult = await ocrClient.processOcr(base64);
+          updateDocumentOcr(docId, ocrResult, 1);
+          send(`[00:15] OCR Complete: Extracted ${ocrResult.words_result_num} text segments.`);
+        } catch (ocrErr: any) {
+          send(`[00:15] OCR processing note: ${ocrErr.message}`);
+        }
+
+        sendProgress(30);
         send("[00:18] Initializing Gemini Multimodal Engine for Document Understanding...");
         send(`[00:26] Gemini API: Processing: ${fileName}`);
 
@@ -43,22 +65,17 @@ export async function POST(request: Request) {
 
         if (!extractedData || (!extractedData.specs?.length && !extractedData.schedules?.length && !extractedData.supply?.length && !extractedData.tests?.length)) {
            send(`           > No technical specifications found in ${fileName}.`);
+           updateDocumentStatus(docId, 'Processed');
            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
            controller.close();
            return;
         }
         
         send(`[00:32] Gemini Extraction Success for ${fileName}`);
-        sendProgress(40);
+        sendProgress(45);
 
         const store = getStore();
         const ids = makeIds();
-        
-        const docPrefix = fileName.split('.')[0].toUpperCase();
-        const submittalTag = `SUB-${docPrefix.substring(0, 8)}`;
-        const docId = `DOC-${docPrefix.substring(0, 8)}`;
-        
-        uploadDocument(docId, fileName, mimeType || 'application/pdf');
 
         if (!store.graph.getNode(docId)) {
           store.graph.addNode({

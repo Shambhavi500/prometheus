@@ -260,6 +260,14 @@ export function rejectDecision(id: string, rationale: string): DecisionRecord {
 export function uploadDocument(id: string, name: string, type: string) {
   const store = getStore();
   const now = new Date().toISOString();
+  const existingIdx = store.documents.findIndex(d => d.id === id);
+  if (existingIdx >= 0) {
+    store.documents[existingIdx].name = name;
+    store.documents[existingIdx].uploadedAt = now;
+    store.documents[existingIdx].status = 'Processing';
+    store.documents[existingIdx].type = type;
+    return;
+  }
   store.documents.unshift({
     id,
     name,
@@ -277,6 +285,14 @@ export function uploadDocument(id: string, name: string, type: string) {
 export function updateDocumentStatus(id: string, status: UploadedDocument['status']) {
   const doc = getStore().documents.find(d => d.id === id);
   if (doc) doc.status = status;
+}
+
+export function updateDocumentOcr(id: string, ocrResult: UploadedDocument['ocrResult'], pagesProcessed = 1) {
+  const doc = getStore().documents.find(d => d.id === id);
+  if (doc) {
+    doc.ocrResult = ocrResult;
+    doc.pagesProcessed = pagesProcessed;
+  }
 }
 
 export function deleteDocument(id: string) {
