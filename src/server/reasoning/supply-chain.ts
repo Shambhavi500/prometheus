@@ -1,10 +1,13 @@
 /**
  * Supply-Chain Agent — deterministic vendor/logistics risk evaluation.
  *
- * Aggregates vendor performance and shipment state into a geospatial risk
- * layer, and raises findings for force-majeure exposure and single-source
- * concentration. Risk scoring is deterministic; the LLM only extracts the
- * source text (bulletin, performance register).
+ * Aggregates NVIDIA component vendor performance and NVIDIA AI Factory
+ * shipment state into a geospatial risk layer. Raises findings for:
+ * - Customs-held optical transceiver batch (critical path for NVLink cabling)
+ * - PDU power shelf single-source vendor risk (Volta Power Systems)
+ *
+ * Risk scoring is deterministic; the LLM only extracts source text.
+ * Based on: NVIDIA GB300 NVL72 AI Factory Reference Architecture
  */
 
 import type { TypedGraph } from '../graph/engine';
@@ -35,11 +38,11 @@ export function runSupplyChain(
   graph: TypedGraph,
   ids: { risk: () => string; decision: () => string; finding: () => string },
 ): SupplyEvaluation {
-  const site = graph.requireNode('PRJ-AQUILA');
+  const site = graph.requireNode('PRJ-NVL72-AIFC');
   const sitePoint: GeoPoint = {
-    id: site.id, tag: 'NM-1', name: 'Project Meghdoot — Data Hall 1', kind: 'site',
-    lat: Number(site.props.lat), lon: Number(site.props.lon),
-    city: String(site.props.city), country: String(site.props.country), region: 'AMER',
+    id: site.id, tag: 'NVL72-AIFC-001', name: 'NVIDIA AI Factory — Pune Cluster (NVL72-AIFC-001)', kind: 'site',
+    lat: 18.52, lon: 73.85,
+    city: 'Pune', country: 'India', region: 'APAC',
     riskScore: 0, riskLevel: 'Nominal',
   };
 
@@ -50,7 +53,8 @@ export function runSupplyChain(
   for (const v of vendors) {
     const onTime = Number(v.props.onTimeRate12mo);
     const forceMajeure = v.status === 'Force Majeure';
-    const singleSource = v.id === 'VEN-KAPPA'; // sole qualified transformer source (VPR-1-2)
+    // VEN-PDU (Volta Power Systems) is sole qualified source for 33kW PSU shelves
+    const singleSource = v.id === 'VEN-PDU';
     const score = vendorRiskScore({ onTimeRate: onTime, forceMajeure, singleSource });
     riskById.set(v.id, score);
     points.push({
@@ -58,7 +62,7 @@ export function runSupplyChain(
       lat: Number(v.props.lat), lon: Number(v.props.lon),
       city: String(v.props.city), country: String(v.props.country), region: String(v.props.region),
       riskScore: score, riskLevel: riskLevelFromScore(score), onTimeRate: onTime,
-      note: forceMajeure ? 'Force majeure — outbound logistics suspended' : singleSource ? 'Single qualified source' : undefined,
+      note: forceMajeure ? 'Force majeure — outbound logistics suspended' : singleSource ? 'Sole qualified source for 33kW PSU shelves (NVL72 rack power)' : undefined,
     });
   }
 
@@ -76,59 +80,59 @@ export function runSupplyChain(
 
   const findings: Finding[] = [];
 
-  // Finding 1 — Meridian force majeure (Critical). Mirrors the mandated
-  // "CRITICAL VENDOR RISK: Factory strike threatens 3 pending Switchgear shipments".
+  // Finding 1 — QSFP112/OSFP optical transceiver batch held at Pune customs (Critical).
+  // Critical path: transceiver delivery → NVLink inter-rack cabling → L2 SAT → GPU burn-in → L5 Acceptance
   {
-    const heldShipments = shipments.filter((s) => graph.out(s.id, 'ORIGINATES_FROM')[0]?.to === 'VEN-MERIDIAN');
-    const noticeCite = cite('DOC-VB-MERIDIAN', 'VB-1-3');
-    const cxCite = cite('DOC-CX-MATRIX', 'CX-1-3');
+    const heldShipments = shipments.filter((s) => s.id === 'SHP-FIBER-001');
+    const noticeCite = cite('DOC-VN-FIBER', 'VN-1-3');
+    const cxCite = cite('DOC-CX-AIFC', 'CX-1-3');
     const riskId = ids.risk();
     const decisionId = ids.decision();
     const findingId = ids.finding();
     const trace: TraceStep[] = [
       { index: 1, total: 4, actor: 'Orchestrator', text: 'Routing to Supply-Chain Agent...' },
-      { index: 2, total: 4, actor: 'Supply-Chain Agent', text: 'Ingesting vendor bulletin VB-2026-118 for PO-992...', payload: { source: 'VB-1-2' } },
-      { index: 3, total: 4, actor: 'Supply-Chain Agent', text: `Traversing graph: ${heldShipments.length} shipments ORIGINATE_FROM VEN-MERIDIAN, all status Held.`, payload: { shipments: heldShipments.map((s) => s.tag) } },
-      { index: 4, total: 4, actor: 'Supply-Chain Agent', text: 'Mapping to commissioning: SS-01B LV Distribution FAT witness slot at risk. Escalating.' },
+      { index: 2, total: 4, actor: 'Supply-Chain Agent', text: 'Ingesting vendor notice VN-2026-221 from OptiCore Japan for PO-2094...', payload: { source: 'VN-1-2' } },
+      { index: 3, total: 4, actor: 'Supply-Chain Agent', text: `Traversing graph: SHP-FIBER-001 (3,456 QSFP112 + 1,152 OSFP) status: Held — Pune customs. Batch on critical path for NVLink inter-rack cabling SU-04 to SU-08.`, payload: { shipments: ['SHP-FIBER-001'] } },
+      { index: 4, total: 4, actor: 'Supply-Chain Agent', text: 'Mapping to commissioning: SS-COMPUTE-B L1 FAT and SS-NVLINK L2 SAT cannot proceed without transceiver batch. Escalating Critical.' },
     ];
     findings.push({
       id: findingId, agentId: 'AGT-SUPPLY', agentName: 'Supply-Chain Agent', kind: 'supply-chain',
       severity: 'Critical',
-      title: 'Meridian force majeure threatens SWG-01 shipments',
-      finding: `Meridian Switchgear declared force majeure on 14-Jul-2026 from a Milan labor action, suspending all outbound logistics [VB-2026-118, Clause 2.1]. Three pending PO-992 shipments are held: ${heldShipments.map((s) => s.tag).join(', ')}.`,
-      impact: `SWG-01 delivery has no committed dispatch date. LV Distribution (SS-01B) L1 Factory Acceptance witness slot cannot be confirmed [CX-MATRIX-DH1, SS-01B], threatening NM-1 energization.`,
-      recommendation: `Issue an alternate-vendor RFQ for the SWG-01 switchgear scope and evaluate expediting relay panels from a qualified secondary source.`,
-      confidence: 0.9,
+      title: 'QSFP112/OSFP transceiver batch held at Pune customs — NVLink cabling blocked',
+      finding: `OptiCore Japan (PO-2094) QSFP112 and OSFP optical transceiver batch (3,456 + 1,152 units) is held at Pune Customs under enhanced dual-use electronics inspection protocol [VN-2026-221, Clause 2.1]. Estimated clearance: 10–14 working days from 14-Jul-2026.`,
+      impact: `The held batch covers all QSFP112 modules for the Spectrum-X dual-plane compute fabric (SU-04 to SU-08) and all OSFP transceivers for SN5610 leaf switch ports. Without clearance, NVLink inter-rack fiber cabling cannot begin, blocking L2 SAT NVLink domain validation and threatening the L5 AI Workload Acceptance milestone [CX-AIFC-001 Rev 3, SS-COMPUTE-B].`,
+      recommendation: `Authorize air-freight of the customs-cleared transceiver batch at premium freight cost, consistent with the NVL72-PILOT Hyderabad precedent (DEC-P01, recovered 3 weeks). Simultaneously pre-terminate fiber cables for SU-04 to SU-08 in parallel.`,
+      confidence: 0.93,
       citations: [noticeCite, cxCite],
       trace,
-      entityIds: ['VEN-MERIDIAN', 'PO-992', 'EQ-SWG01', 'SS-01B', 'SHP-992-1'],
+      entityIds: ['VEN-FIBER', 'PO-2094', 'SHP-FIBER-001', 'SS-COMPUTE-B', 'SS-NVLINK'],
       riskId, decisionId,
     });
   }
 
-  // Finding 2 — Kappa single-source geographic/performance risk (High).
+  // Finding 2 — Volta Power Systems single-source geographic/performance risk (High).
   {
-    const vprCite = cite('DOC-VPR', 'VPR-1-2');
-    const kappaScore = riskById.get('VEN-KAPPA') ?? 0;
+    const vprCite = cite('DOC-VPR-2026', 'VPR-1-2');
+    const pduScore = riskById.get('VEN-PDU') ?? 0;
     const riskId = ids.risk();
     const decisionId = ids.decision();
     const findingId = ids.finding();
     const trace: TraceStep[] = [
-      { index: 1, total: 3, actor: 'Supply-Chain Agent', text: 'Reading Vendor Performance Register VPR-2026-Q2 (EMEA)...', payload: { source: 'VPR-1-2' } },
-      { index: 2, total: 3, actor: 'Supply-Chain Agent', text: 'Kappa on-time rate 61%; sole qualified source for PO-884 transformers; no secondary source listed.', payload: { onTimeRate: 0.61, singleSource: true } },
-      { index: 3, total: 3, actor: 'Supply-Chain Agent', text: `Computed aggregate vendor risk ${(kappaScore * 100).toFixed(0)}% (performance + single-source concentration).` },
+      { index: 1, total: 3, actor: 'Supply-Chain Agent', text: 'Reading Vendor Performance Register VPR-2026-Q2 (APAC)...', payload: { source: 'VPR-1-2' } },
+      { index: 2, total: 3, actor: 'Supply-Chain Agent', text: 'Volta Power Systems on-time rate 77%; sole qualified source for 5.5 kW PSU modules (33 kW shelf); no secondary source listed. Q3 backlog adds 3–4 week risk.', payload: { onTimeRate: 0.77, singleSource: true } },
+      { index: 3, total: 3, actor: 'Supply-Chain Agent', text: `Computed aggregate vendor risk ${(pduScore * 100).toFixed(0)}% (performance + single-source concentration).` },
     ];
     findings.push({
       id: findingId, agentId: 'AGT-SUPPLY', agentName: 'Supply-Chain Agent', kind: 'supply-chain',
       severity: 'High',
-      title: 'TX-01 transformer is single-source with weak delivery history',
-      finding: `Kappa Transformer Works is the sole qualified source for the PO-884 transformers and holds a 61% 12-month on-time delivery rate [VPR-2026-Q2]. No secondary qualified source is listed. Aggregate vendor risk: ${(kappaScore * 100).toFixed(0)}%.`,
-      impact: `The TX-01 critical path (already 38 weeks slipped) has no supply redundancy. Any further Kappa slippage propagates directly to L5 Integrated Systems Testing.`,
-      recommendation: `Initiate qualification of a secondary transformer source and flag TX-01 as a single-source supply risk on the procurement register.`,
-      confidence: 0.82,
+      title: '33kW PSU shelves are single-source with substandard delivery history',
+      finding: `Volta Power Systems (Singapore) is the sole qualified source for the 5.5 kW hot-swap PSU modules used in the 33 kW power shelves (8/rack × 8 racks = 64 shelves total, PO-2098). Their 12-month on-time delivery rate is 77% [VPR-2026-Q2], and Q3 factory backlog may extend lead times by 3–4 weeks. No secondary qualified source is listed in the approved vendor register. Aggregate vendor risk: ${(pduScore * 100).toFixed(0)}%.`,
+      impact: `A further 3–4 week slip in power shelf delivery will delay the Power Distribution Site Acceptance (L2), blocking rack installation commissioning for all 8 NVL72 SUs. The GPU burn-in (L3) and L5 AI Workload Acceptance milestones cannot be sequenced without energized power shelves.`,
+      recommendation: `Initiate qualification of a secondary PSU shelf vendor (5.5 kW hot-swap, 33 kW shelf format) and flag Volta Power Systems as a single-source supply risk on the procurement register. Evaluate strategic safety stock (8–12 weeks of critical PSU modules).`,
+      confidence: 0.85,
       citations: [vprCite],
       trace,
-      entityIds: ['VEN-KAPPA', 'PO-884', 'EQ-TX01'],
+      entityIds: ['VEN-PDU', 'PO-2098', 'EQ-PSU-SHELF'],
       riskId, decisionId,
     });
   }
@@ -153,7 +157,7 @@ export function evaluateDynamicSupplyRisk(
   // Recompute score dynamically
   const onTime = Number(vendor.props.onTimeRate12mo) || 0.95;
   const forceMajeure = ex.status === 'Force Majeure';
-  const singleSource = vendor.id === 'VEN-KAPPA'; 
+  const singleSource = vendor.id === 'VEN-PDU'; 
   const score = vendorRiskScore({ onTimeRate: onTime, forceMajeure, singleSource });
 
   const decisionId = ids.decision();
@@ -166,8 +170,8 @@ export function evaluateDynamicSupplyRisk(
     severity: score >= 0.7 ? 'Critical' : score >= 0.35 ? 'High' : 'Medium',
     title: `${vendor.name} ${ex.status.toLowerCase()} detected`,
     finding: `Dynamic ingestion identified a ${ex.status} status for ${vendor.name} [${docId}]. Note: ${ex.note || 'None'}. Aggregate vendor risk score updated to ${(score * 100).toFixed(0)}%.`,
-    impact: `Shipments originating from ${vendor.name} are at elevated risk, potentially blocking downstream commissioning.`,
-    recommendation: `Issue alternate-vendor RFQ for scopes tied to ${vendor.name} and evaluate expediting from secondary sources.`,
+    impact: `Shipments originating from ${vendor.name} are at elevated risk, potentially blocking downstream AI Factory commissioning.`,
+    recommendation: `Issue alternate-vendor assessment for NVIDIA AI Factory scopes tied to ${vendor.name} and evaluate expediting from secondary sources.`,
     confidence: 0.9,
     citations: [{ docId, docTitle: `AI Extraction (${docId})`, page: 1, blockId: 'dynamic-extract', quote: `Status: ${ex.status}`, clause: 'Vendor Notice' }],
     trace: [
@@ -185,11 +189,11 @@ export function evaluateDynamicSupplyRisk(
     findingId: finding.id,
     severity: finding.severity,
     agentName: 'Supply-Chain Agent',
-    action: `Issue alternate-vendor RFQ for ${vendor.name}`,
+    action: `Issue alternate-vendor assessment for ${vendor.name}`,
     impact: finding.impact,
     status: 'Pending',
     createdAt: new Date().toISOString(),
-    writeBack: { system: 'Octave', message: 'Alternate-vendor RFQ generated and routed to Procurement.' }
+    writeBack: { system: 'NVIDIA Mission Control', message: 'Alternate-vendor RFQ generated and routed to Procurement.' }
   };
 
   return { finding, decision };

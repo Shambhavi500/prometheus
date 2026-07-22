@@ -53,14 +53,14 @@ export default function Home() {
   const [logsComplete, setLogsComplete] = useState(false);
   const logTerminalRef = useRef<HTMLDivElement>(null);
 
-  // Category counts
+  // Category counts (NVIDIA AI Factory construction corpus)
   const [categories, setCategories] = useState({
-    'Specifications': 18,
-    'Vendor Submittals': 46,
-    'Drawings': 123,
-    'RFIs': 14,
-    'Commissioning Docs': 67,
-    'Quality Records': 31,
+    'Specifications': 12,
+    'Vendor Submittals': 34,
+    'NVIDIA RA Docs': 8,
+    'Commissioning Records': 47,
+    'RFIs & Deviations': 19,
+    'Schedule Extracts': 23,
   });
 
   // Category mapping based on file extension/name keywords
@@ -160,7 +160,7 @@ export default function Home() {
     setStep('PROCESSING');
     
     // Call Ingest endpoint for custom files or fallback mock
-    const ocrFiles = uploadedFiles.length > 0 ? uploadedFiles : [{ name: 'TX01_Submittal.pdf', base64: 'mock_base64_data', type: 'application/pdf' }];
+    const ocrFiles = uploadedFiles.length > 0 ? uploadedFiles : [{ name: 'CDU_Vendor_Submittal.pdf', base64: 'mock_base64_data', type: 'application/pdf' }];
     
     // For prototype simplicity, we process the first file via SSE to demonstrate the real pipeline
     const file = ocrFiles[0];
@@ -275,13 +275,13 @@ export default function Home() {
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '28px', color: 'var(--txt-hi)', fontWeight: 300, letterSpacing: '-0.02em' }}>Project Meghdoot (NM-1)</span>
+                <span style={{ fontSize: '28px', color: 'var(--txt-hi)', fontWeight: 300, letterSpacing: '-0.02em' }}>AI Factory NVL72-AIFC-001</span>
                 <span className="badge badge--success" style={{ background: 'var(--teal-dim)', color: 'var(--teal)', border: '1px solid rgba(0,240,255,0.4)', boxShadow: '0 0 12px rgba(0,240,255,0.2)' }}>Active</span>
               </div>
               <div style={{ display: 'flex', gap: '24px', fontSize: 'var(--fs-12)', color: 'var(--txt-md)', fontFamily: 'var(--font-mono)' }}>
-                <span>ID: PRJ-992</span>
-                <span>Location: Navi Mumbai, India</span>
-                <span>Type: Hyperscale Data Center</span>
+                <span>ID: PRJ-NVL72-AIFC</span>
+                <span>Location: Pune, Maharashtra, India</span>
+                <span>Type: NVIDIA AI Factory (576 GPU / 8 SU)</span>
               </div>
             </div>
 
@@ -299,13 +299,13 @@ export default function Home() {
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '24px', color: 'var(--txt-md)', fontWeight: 300 }}>Project Vayu (BLR-2)</span>
+                <span style={{ fontSize: '24px', color: 'var(--txt-md)', fontWeight: 300 }}>AI Factory NVL72-PILOT (Hyderabad)</span>
                 <span className="badge" style={{ background: 'var(--bg-1)', color: 'var(--txt-lo)', border: '1px solid var(--line-strong)' }}>Archived</span>
               </div>
               <div style={{ display: 'flex', gap: '24px', fontSize: 'var(--fs-11)', color: 'var(--txt-lo)', fontFamily: 'var(--font-mono)' }}>
-                <span>ID: PRJ-401</span>
-                <span>Location: Bangalore, India</span>
-                <span>Type: Telecom Hub</span>
+                <span>ID: PRJ-NVL72-PILOT</span>
+                <span>Location: Hyderabad, Telangana, India</span>
+                <span>Type: NVIDIA AI Factory (144 GPU / 2 SU)</span>
               </div>
             </div>
 

@@ -1,43 +1,52 @@
 /**
- * Seed source documents — Project Meghdoot NM-1.
+ * Seed source documents — NVIDIA AI Factory NVL72-AIFC-001 (Pune Cluster).
  *
- * These are the unmodified artifacts of record from which all evidence is
- * extracted. Block ids are stable citation anchors. In production these are
- * ingested via OCR/layout parsers from Octave; here they are pre-parsed
- * fixtures representing the output of the Ingestion & Perception layer.
+ * These are the artifacts of record from which all evidence is extracted.
+ * Block ids are stable citation anchors. Pre-parsed fixtures representing
+ * the output of the Ingestion & Perception layer from the AI Factory
+ * construction document corpus.
+ *
+ * Based on: NVIDIA GB300 NVL72 AI Factory Reference Architecture
+ * ET AI Hackathon 2026 — Problem Statement 4
  */
 
 import type { SourceDocument } from '@prometheus/ontology';
 
 export const SEED_DOCUMENTS: SourceDocument[] = [
   {
-    id: 'DOC-SPEC-MECH-02',
-    title: 'SPEC-MECH-02 — Mechanical Specification: Cooling Distribution',
+    id: 'DOC-SPEC-COOL',
+    title: 'SPEC-COOL-001 — AI Factory Liquid Cooling System Specification',
     docType: 'Specification',
     revision: 'Rev B',
-    issued: '11-Feb-2026',
-    sourceSystem: 'Octave',
+    issued: '01-Mar-2026',
+    sourceSystem: 'Primavera P6',
     pages: [
       {
         page: 1,
         blocks: [
-          { id: 'SM2-1-1', kind: 'heading', text: 'SECTION 4 — COOLING DISTRIBUTION UNITS (CDU)' },
+          { id: 'SC-1-1', kind: 'heading', text: 'SECTION 4 — RACK-LEVEL DIRECT LIQUID COOLING DISTRIBUTION UNITS (CDU)' },
           {
-            id: 'SM2-1-2',
+            id: 'SC-1-2',
             kind: 'para',
-            text: 'This section governs the design, fabrication, and testing of cooling distribution units serving Data Hall 1 (NM-1). All units shall comply with the project basis of design and the referenced standards.',
+            text: 'This section governs the design, fabrication, testing, and commissioning of rack-level direct liquid cooling distribution units (CDUs) for the NVIDIA GB300 NVL72 AI Factory, Pune. All units shall comply with the NVIDIA GB300 NVL72 Reference Architecture thermal design envelope and the referenced ASHRAE W4 standards.',
           },
           {
-            id: 'SM2-1-3',
+            id: 'SC-1-3',
+            kind: 'clause',
+            clause: '4.1.0',
+            text: 'Each GB300 NVL72 rack (Scalable Unit) shall be served by a dedicated rack-level CDU. The CDU shall be sized to handle the full rack thermal design power (TDP) at any GPU utilization level, including sustained LLM training and inference workloads.',
+          },
+          {
+            id: 'SC-1-4',
             kind: 'clause',
             clause: '4.1.1',
-            text: 'Each CDU shall be rated for a continuous thermal duty of 1,200 kW at the design supply/return temperatures stated in Schedule M-201.',
+            text: 'Each CDU shall be rated for a continuous thermal duty of not less than 142 kW at the NVIDIA-specified design supply temperature of 18°C and return temperature of 40°C. Units with a capacity below 142 kW shall not be submitted without prior written RFI and Owner approval.',
           },
           {
-            id: 'SM2-1-4',
+            id: 'SC-1-5',
             kind: 'clause',
             clause: '4.1.2',
-            text: 'CDU electrical supply shall be 480 V, 3-phase, 60 Hz. Units requiring any other supply configuration shall not be submitted without prior written deviation approval.',
+            text: 'CDU supply voltage shall be 415 V, 3-phase, 50 Hz as per the data hall electrical infrastructure. The CDU shall include integrated pump redundancy (N+1 pump configuration) to support continuous operation during single-pump failure without GPU throttling.',
           },
         ],
       },
@@ -45,77 +54,104 @@ export const SEED_DOCUMENTS: SourceDocument[] = [
         page: 2,
         blocks: [
           {
-            id: 'SM2-2-1',
-            kind: 'clause',
-            clause: '4.3.1',
-            text: 'Vendor shall state the unit operating weight (flooded) in the submittal data sheet for structural coordination of the NM-1 raised slab.',
-          },
-          {
-            id: 'SM2-2-2',
+            id: 'SC-2-1',
             kind: 'clause',
             clause: '4.3.2',
-            text: 'Factory acceptance testing (FAT) shall be witnessed and shall include hydrostatic test records at 1.5x design pressure.',
+            text: 'Vendor shall state the unit inrush current (peak, 200ms duration) in the submittal data sheet to enable coordination with the data hall LV switchboard protection settings. Units where inrush current is not declared shall be returned for resubmission.',
+          },
+          {
+            id: 'SC-2-2',
+            kind: 'clause',
+            clause: '4.3.3',
+            text: 'Factory acceptance testing (FAT) shall be witnessed and shall include hydrostatic test records at 1.5× design pressure, full-load thermal performance test at 142 kW, and pump changeover test.',
           },
         ],
       },
     ],
   },
   {
-    id: 'DOC-SPEC-ELEC-01',
-    title: 'SPEC-ELEC-01 — Electrical Specification: MV/LV Power Distribution',
+    id: 'DOC-SPEC-NET',
+    title: 'SPEC-NET-001 — Spectrum-X 800G Dual-Plane Network Specification',
     docType: 'Specification',
-    revision: 'Rev C',
-    issued: '28-Jan-2026',
-    sourceSystem: 'Octave',
+    revision: 'Rev A',
+    issued: '15-Feb-2026',
+    sourceSystem: 'Primavera P6',
     pages: [
       {
         page: 1,
         blocks: [
-          { id: 'SE1-1-1', kind: 'heading', text: 'SECTION 3 — UNIT SUBSTATION TRANSFORMERS' },
+          { id: 'SN-1-1', kind: 'heading', text: 'SECTION 5 — GPU COMPUTE (EAST/WEST) ETHERNET FABRIC' },
           {
-            id: 'SE1-1-2',
+            id: 'SN-1-2',
             kind: 'clause',
-            clause: '3.2.1',
-            text: 'Unit substation transformers TX-01 and TX-02 shall provide a secondary voltage of 480Y/277 V and shall conform to IEEE C57.12.00 for rating and impedance tolerances.',
+            clause: '5.1.2',
+            text: 'Each compute tray shall provide a minimum recommended compute network bandwidth of 800 Gb/s per GPU via four NVIDIA ConnectX-8 SuperNICs, each operating at 800 Gb/s. The dual-plane topology breaks each 800G interface into 2×400G links, one per independent fabric plane, ensuring N+1 redundancy and NCCL-managed load balancing.',
           },
           {
-            id: 'SE1-1-3',
+            id: 'SN-1-3',
             kind: 'clause',
-            clause: '3.2.4',
-            text: 'Transformer impedance shall be 5.75% ± 7.5% tolerance on the self-cooled rating.',
+            clause: '5.1.3',
+            text: 'The compute fabric shall implement a rail-optimized, non-blocking fat-tree topology using NVIDIA SN5610 leaf switches and NVIDIA SN5600 spine switches. The leaf switches shall be deployed in pairs per GPU rail position, one per plane.',
           },
         ],
       },
       {
         page: 2,
         blocks: [
-          { id: 'SE1-2-1', kind: 'heading', text: 'SECTION 5 — LV SWITCHGEAR' },
           {
-            id: 'SE1-2-2',
+            id: 'SN-2-1',
             kind: 'clause',
-            clause: '5.1.4',
-            text: 'LV switchgear SWG-01 shall have a short-circuit withstand rating of not less than 65 kA RMS symmetrical for 30 cycles.',
+            clause: '5.2.1',
+            text: 'Each NVIDIA SN5610 leaf switch shall be configured with RDMA over Converged Ethernet (RoCE) support, Spectrum-X congestion control, and telemetry-based adaptive routing. Dual-ported OSFP optics are recommended at the ConnectX-8 port to simplify breakout cabling.',
           },
         ],
       },
     ],
   },
   {
-    id: 'DOC-SUB-CDU01-R1',
-    title: 'SUB-CDU01-R1 — CDU-01 Vendor Submittal, Revision 1',
+    id: 'DOC-SPEC-NVLINK',
+    title: 'SPEC-NVLINK-001 — NVLink 5th-Gen Domain Specification',
+    docType: 'Specification',
+    revision: 'Rev A',
+    issued: '15-Feb-2026',
+    sourceSystem: 'Primavera P6',
+    pages: [
+      {
+        page: 1,
+        blocks: [
+          { id: 'SNL-1-1', kind: 'heading', text: 'SECTION 6 — NVLINK 5TH-GENERATION IN-RACK DOMAIN' },
+          {
+            id: 'SNL-1-2',
+            kind: 'clause',
+            clause: '6.2.1',
+            text: 'Each Blackwell Ultra GPU within the NVL72 rack shall be connected to all 18 NVSwitch ASICs via NVLink 5th-generation links through the copper backplane. This creates a fully connected L1 NVLink domain of 72 GPUs with an aggregate bandwidth of 900 GB/s (1,800 GB/s bi-directional) per rack.',
+          },
+          {
+            id: 'SNL-1-3',
+            kind: 'clause',
+            clause: '6.2.2',
+            text: 'Each NVL72 rack shall contain 9 NVLink Switch Trays, each carrying 2 NVSwitch ASICs, for a total of 18 NVSwitch ASICs per rack. The total aggregated NVLink fabric bandwidth is 130 TB/s per NVL72 rack.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'DOC-SUB-CDU-R1',
+    title: 'SUB-CDU-R1 — Liquid Cooling CDU Vendor Submittal, Revision 1',
     docType: 'Submittal',
     revision: 'Rev 1',
     issued: '30-Jun-2026',
-    sourceSystem: 'Octave',
+    sourceSystem: 'Primavera P6',
     pages: [
       {
         page: 1,
         blocks: [
-          { id: 'SC1-1-1', kind: 'heading', text: 'CDU-01 TECHNICAL SUBMITTAL — HELIOS THERMAL SYSTEMS' },
+          { id: 'SCD-1-1', kind: 'heading', text: 'COOLING DISTRIBUTION UNIT TECHNICAL SUBMITTAL — PRECISION COOLING SYSTEMS AG' },
           {
-            id: 'SC1-1-2',
+            id: 'SCD-1-2',
             kind: 'para',
-            text: 'Submittal covering cooling distribution unit CDU-01 for Project Meghdoot NM-1, in response to SPEC-MECH-02 Rev B.',
+            text: 'Submittal covering rack-level liquid cooling distribution units for NVIDIA AI Factory NVL72-AIFC-001 (Pune), in response to SPEC-COOL-001 Rev B. Vendor: Precision Cooling Systems AG, Stuttgart, Germany.',
           },
         ],
       },
@@ -123,117 +159,98 @@ export const SEED_DOCUMENTS: SourceDocument[] = [
         page: 2,
         blocks: [
           {
-            id: 'SC1-2-1',
+            id: 'SCD-2-1',
             kind: 'para',
-            text: 'Thermal performance: continuous duty 1,250 kW at design conditions per Schedule M-201. Hydrostatic FAT at 1.5x design pressure included in standard scope.',
+            text: 'Thermal performance: continuous duty 128 kW at 18°C supply / 38°C return. Pump configuration: N+1 (primary + standby). Hydrostatic FAT at 1.5× design pressure included in standard scope.',
+          },
+          {
+            id: 'SCD-2-2',
+            kind: 'para',
+            text: 'Note: The submitted unit (model PCS-LCC-128) is our standard data center CDU rated at 128 kW. To achieve 142 kW, an upgraded coil insert kit (PCS-CI-LCC-142) must be specified. This is available at additional cost; lead time impact: 6 weeks from order.',
           },
         ],
       },
       {
         page: 3,
         blocks: [
-          { id: 'SC1-3-1', kind: 'heading', text: 'ELECTRICAL DATA — CDU-01' },
+          { id: 'SCD-3-1', kind: 'heading', text: 'ELECTRICAL DATA — CDU UNIT' },
           {
-            id: 'SC1-3-2',
+            id: 'SCD-3-2',
             kind: 'table',
-            text: 'Supply voltage: 400 V / 3-phase / 50 Hz. Full load current: 86 A. Control voltage: 24 V DC.',
+            text: 'Supply voltage: 415 V / 3-phase / 50 Hz. Full load current: 62 A. Pump motor rating: 11 kW × 2. Control voltage: 24 V DC.',
           },
           {
-            id: 'SC1-3-3',
+            id: 'SCD-3-3',
             kind: 'para',
-            text: 'Note: Unit as quoted is the EU-market configuration. Alternative supply configurations available on request; refer to factory.',
+            text: 'Inrush current: Not stated. Refer to factory for coordination study data.',
           },
         ],
       },
     ],
   },
   {
-    id: 'DOC-SUB-TX01-R2',
-    title: 'SUB-TX01-R2 — TX-01 Transformer Submittal, Revision 2',
+    id: 'DOC-SUB-RACK-R2',
+    title: 'SUB-RACK-R2 — GB300 NVL72 Rack Assembly Submittal, Revision 2',
     docType: 'Submittal',
     revision: 'Rev 2',
-    issued: '19-Jun-2026',
-    sourceSystem: 'Octave',
+    issued: '10-Jun-2026',
+    sourceSystem: 'Primavera P6',
     pages: [
       {
         page: 1,
         blocks: [
-          { id: 'ST1-1-1', kind: 'heading', text: 'TX-01 UNIT SUBSTATION TRANSFORMER — KAPPA TRANSFORMER WORKS' },
+          { id: 'SRK-1-1', kind: 'heading', text: 'GB300 NVL72 RACK ASSEMBLY — NVIDIA OEM PARTNER TECHNICAL SUBMITTAL' },
         ],
       },
       {
         page: 2,
         blocks: [
           {
-            id: 'ST1-2-1',
+            id: 'SRK-2-1',
             kind: 'table',
-            text: 'Rating: 2,500 kVA ONAN. Primary: 34.5 kV delta. Secondary: 480Y/277 V. Impedance: 5.72% at self-cooled rating. Conforms to IEEE C57.12.00.',
+            text: 'GPU Count: 72 NVIDIA Blackwell Ultra B300 GPUs. CPU Count: 36 NVIDIA Grace CPUs (2 per tray). Compute Trays: 18. NVLink Switch Trays: 9 (18 NVSwitch ASICs). ConnectX-8 SuperNICs: 72 (4 per tray). BlueField-3 B3240 DPUs: 18 (1 per tray). Power: 8× 33kW shelves (6× 5.5kW PSUs/shelf). Cooling: Integrated direct liquid cooling. NVLink Bandwidth: 900 GB/s (uni-directional in-rack domain).',
+          },
+        ],
+      },
+      {
+        page: 3,
+        blocks: [
+          {
+            id: 'SRK-3-1',
+            kind: 'clause',
+            clause: 'NVLink Compliance',
+            text: 'NVLink 5th-gen port count: 18 links per GPU via copper backplane to all 18 NVSwitch ASICs. Compliant with SPEC-NVLINK-001 REQ-NVLINK-001.',
           },
         ],
       },
     ],
   },
   {
-    id: 'DOC-SUB-SWG01-R1',
-    title: 'SUB-SWG01-R1 — SWG-01 Switchgear Submittal, Revision 1',
+    id: 'DOC-SUB-BF3-R1',
+    title: 'SUB-BF3-R1 — BlueField-3 B3240 DPU Submittal, Revision 1',
     docType: 'Submittal',
     revision: 'Rev 1',
-    issued: '12-Jun-2026',
-    sourceSystem: 'Octave',
-    pages: [
-      {
-        page: 4,
-        blocks: [
-          {
-            id: 'SW1-4-1',
-            kind: 'table',
-            text: 'SWG-01 ratings: 4,000 A main bus. Short-circuit withstand: 65 kA RMS symmetrical, 30 cycles. Enclosure: NEMA 1 indoor.',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'DOC-VQ-884',
-    title: 'VQ-884 — Kappa Transformer Works: Quotation for PO-884',
-    docType: 'VendorQuote',
-    revision: 'Rev 0',
-    issued: '02-Jul-2026',
-    sourceSystem: 'Mail Ingest',
+    issued: '05-Jun-2026',
+    sourceSystem: 'Primavera P6',
     pages: [
       {
         page: 1,
         blocks: [
-          { id: 'VQ-1-1', kind: 'heading', text: 'QUOTATION Q-2026-0771 — UNIT SUBSTATION TRANSFORMERS' },
+          { id: 'SBF-1-1', kind: 'heading', text: 'BLUEFIELD-3 B3240 DPU — TECHNICAL SUBMITTAL' },
           {
-            id: 'VQ-1-2',
-            kind: 'para',
-            text: 'Kappa Transformer Works confirms pricing and scope for two (2) 2,500 kVA unit substation transformers per SPEC-ELEC-01 Rev C, purchase order PO-884.',
-          },
-        ],
-      },
-      {
-        page: 2,
-        blocks: [
-          {
-            id: 'VQ-2-1',
-            kind: 'para',
-            text: 'Delivery: current factory loading requires a lead time of 128 weeks ex-works from PO award for unit T-01, and 131 weeks for the second unit. Expedited slots are not available in the current order book.',
-          },
-          {
-            id: 'VQ-2-2',
-            kind: 'para',
-            text: 'Validity: pricing and delivery are valid for 45 days from the date of this quotation.',
+            id: 'SBF-1-2',
+            kind: 'table',
+            text: 'Model: BlueField-3 B3240 DPU. Ports: 2× 400G QSFP112. Aggregate bandwidth: 480 Gb/s (dual-port aggregate). Mode: ECPF/DPU mode. BMC: Integrated Redfish 1.4 onboard BMC. Features: BlueField SNAP, zero-trust security, IPSec/MACSec, storage acceleration.',
           },
         ],
       },
     ],
   },
   {
-    id: 'DOC-P6-EXTR',
-    title: 'P6-EXTR-2026-07 — Primavera P6 Baseline Extract, NM-1 Power Path',
+    id: 'DOC-P6-AIFC',
+    title: 'P6-AIFC-2026-07 — Primavera P6 Baseline Extract, AI Factory Build Path',
     docType: 'ScheduleExtract',
-    revision: 'Baseline 3',
+    revision: 'Baseline 2',
     issued: '01-Jul-2026',
     sourceSystem: 'Primavera P6',
     pages: [
@@ -243,21 +260,21 @@ export const SEED_DOCUMENTS: SourceDocument[] = [
           {
             id: 'P6-1-1',
             kind: 'table',
-            text: 'A100 Award TX-01 Purchase Order — Finish 06-Mar-2026 (Actual). A102 TX-01 Manufacture & Delivery — Start 09-Mar-2026, Finish 29-Nov-2027. A140 NM-1 Energization — Start 06-Dec-2027, Finish 14-Jan-2028. A200 L4 Functional Testing — Start 17-Jan-2028, Finish 10-Mar-2028. A210 L5 Integrated Systems Testing — Start 13-Mar-2028, Finish 05-May-2028.',
+            text: 'S100 Site Civil Preparation — Finish 28-Feb-2026 (Actual). S200 Power Infrastructure — Start 15-Jan-2026, Finish 31-Jul-2026 (In Progress). S300 Liquid Cooling Installation — Start 01-Feb-2026, Finish 15-Aug-2026 (In Progress). S400 GB300 NVL72 Rack Delivery — Start 01-Apr-2026, Finish 29-Aug-2026. S500 Rack Installation & Network Cabling — Start 01-Sep-2026, Finish 30-Nov-2026. S600 Spectrum-X Fabric Commissioning — Start 15-Oct-2026, Finish 31-Dec-2026. S700 NVLink Domain Validation — Start 05-Jan-2027, Finish 28-Feb-2027. S800 GPU Burn-in & Thermal Baseline (L3) — Start 01-Mar-2027, Finish 30-Apr-2027. S900 L5 AI Workload Acceptance — Start 01-May-2027, Finish 30-Jun-2027.',
           },
           {
             id: 'P6-1-2',
             kind: 'clause',
-            clause: 'Basis of Schedule §2.4',
-            text: 'Activity A102 duration is based on a vendor lead-time assumption of 90 weeks for the TX-01 unit substation transformer, per pre-award budgetary quotations received October 2025.',
+            clause: 'Basis of Schedule §3.1',
+            text: 'Activity S400 duration is based on a vendor lead-time assumption of 18 weeks for the GB300 NVL72 racks (8 Scalable Units) from PO award date of 01-Apr-2026, per OEM pre-award confirmation received March 2026.',
           },
         ],
       },
     ],
   },
   {
-    id: 'DOC-VB-MERIDIAN',
-    title: 'VB-2026-118 — Meridian Switchgear: Force Majeure Notice',
+    id: 'DOC-VN-FIBER',
+    title: 'VN-2026-221 — OptiCore Japan: Customs Hold Notice (QSFP112/OSFP Batch)',
     docType: 'VendorQuote',
     revision: 'Rev 0',
     issued: '14-Jul-2026',
@@ -266,138 +283,186 @@ export const SEED_DOCUMENTS: SourceDocument[] = [
       {
         page: 1,
         blocks: [
-          { id: 'VB-1-1', kind: 'heading', text: 'NOTICE OF FORCE MAJEURE — PO-992 SWITCHGEAR' },
+          { id: 'VN-1-1', kind: 'heading', text: 'NOTICE OF CUSTOMS HOLD — PO-2094 OPTICAL TRANSCEIVER BATCH' },
           {
-            id: 'VB-1-2',
+            id: 'VN-1-2',
             kind: 'para',
-            text: 'Meridian Switchgear declares a force majeure event effective 14-Jul-2026 arising from an industrial labor action at the Milan assembly facility. All outbound logistics are suspended until further notice.',
+            text: 'OptiCore Japan regrets to inform that the QSFP112 and OSFP optical transceiver batch (3,456 + 1,152 units) for purchase order PO-2094 is currently held by Pune Customs under an enhanced inspection protocol for dual-use electronics (Notification 3/2026). Estimated customs clearance: 10–14 working days from the date of this notice.',
           },
           {
-            id: 'VB-1-3',
+            id: 'VN-1-3',
             kind: 'clause',
             clause: '2.1',
-            text: 'Three (3) pending shipments under PO-992 are affected: switchgear section A, switchgear section B, and the protection relay panels for SWG-01. No revised dispatch date can be committed at this time.',
+            text: 'The affected batch covers all QSFP112 modules for the Spectrum-X dual-plane compute fabric and all OSFP transceivers for the SN5610 leaf switch OSFP ports. Without customs clearance, NVLink inter-rack fiber cabling for SU-04 through SU-08 cannot proceed.',
           },
         ],
       },
     ],
   },
   {
-    id: 'DOC-VPR',
-    title: 'VPR-2026-Q2 — Vendor Performance Register (EMEA)',
+    id: 'DOC-VPR-2026',
+    title: 'VPR-2026-Q2 — Vendor Performance Register (APAC/EU) Q2 2026',
     docType: 'ScheduleExtract',
     revision: 'Q2 2026',
     issued: '30-Jun-2026',
-    sourceSystem: 'Octave',
+    sourceSystem: 'Primavera P6',
     pages: [
       {
         page: 1,
         blocks: [
-          { id: 'VPR-1-1', kind: 'heading', text: 'VENDOR PERFORMANCE — 12-MONTH ROLLING (EMEA)' },
+          { id: 'VPR-1-1', kind: 'heading', text: 'VENDOR PERFORMANCE — 12-MONTH ROLLING (APAC/EU REGION)' },
           {
             id: 'VPR-1-2',
             kind: 'table',
-            text: 'Kappa Transformer Works — on-time delivery rate 61% across 12-month EMEA history; sole qualified source for the 2,500 kVA unit substation transformers under PO-884. No secondary qualified source is currently listed.',
+            text: 'Volta Power Systems (Singapore) — on-time delivery rate 77% across 12-month APAC history. Sole qualified source for 5.5 kW hot-swap PSU modules (33 kW shelf configuration). No secondary qualified source is currently listed in the approved vendor register. Q3 factory backlog may extend lead times by 3–4 weeks.',
           },
           {
             id: 'VPR-1-3',
             kind: 'table',
-            text: 'Meridian Switchgear — on-time delivery rate 74%. Helios Thermal Systems — on-time delivery rate 88%.',
+            text: 'OptiCore Japan — on-time delivery rate 84%. Precision Cooling Systems AG — on-time delivery rate 91%. NVIDIA OEM Partner — on-time delivery rate 89%.',
           },
         ],
       },
     ],
   },
   {
-    id: 'DOC-CX-MATRIX',
-    title: 'CX-MATRIX-DH1 — Commissioning Readiness Matrix, NM-1',
+    id: 'DOC-CX-AIFC',
+    title: 'CX-AIFC-001 Rev 3 — AI Factory Commissioning Readiness Matrix',
     docType: 'ScheduleExtract',
-    revision: 'Rev 5',
+    revision: 'Rev 3',
     issued: '15-Jul-2026',
-    sourceSystem: 'Smart Completions',
+    sourceSystem: 'NVIDIA Mission Control',
     pages: [
       {
         page: 1,
         blocks: [
-          { id: 'CX-1-1', kind: 'heading', text: 'L1–L5 COMMISSIONING READINESS — DATA HALL 1' },
+          { id: 'CX-1-1', kind: 'heading', text: 'L1–L5 COMMISSIONING READINESS — NVIDIA AI FACTORY NVL72-AIFC-001' },
           {
             id: 'CX-1-2',
             kind: 'clause',
-            clause: 'SYS-01 / SS-01A',
-            text: 'MV Distribution (SS-01A): L1 Factory Acceptance blocked. TX-01 remains in manufacture with no delivery date; no unit is available to witness FAT. L2–L5 not started.',
+            clause: 'SYS-COMPUTE / SS-COMPUTE-A',
+            text: 'GPU Compute Cluster SU-01 to SU-04: L1 Factory Acceptance Test (FAT) blocked. Racks SU-01 and SU-02 remain in manufacture at OEM facility with 20-week actual lead time (vs 18-week baseline). No unit available for FAT witness. L2–L5 not started.',
           },
           {
             id: 'CX-1-3',
             kind: 'clause',
-            clause: 'SYS-01 / SS-01B',
-            text: 'LV Distribution (SS-01B): L1 Factory Acceptance at risk. SWG-01 dispatch suspended under the Meridian force majeure; FAT witness slot cannot be confirmed.',
+            clause: 'SYS-COMPUTE / SS-COMPUTE-B',
+            text: 'GPU Compute Cluster SU-05 to SU-08: L1 FAT at risk. Optical transceiver customs hold (SHP-FIBER-001) prevents NVLink inter-rack cabling needed for L2 NVLink domain validation on SU-04 through SU-08.',
           },
           {
             id: 'CX-1-4',
             kind: 'clause',
-            clause: 'SYS-02 / SS-02A',
-            text: 'Chilled Water (SS-02A): L1 at risk pending resolution of the CDU-01 supply voltage deviation.',
+            clause: 'SYS-COMPUTE / SS-NVLINK',
+            text: 'NVLink 5th-Gen Domain (L2 SAT): Blocked. L2 NVLink domain integrity test requires all 9 NVSwitch trays per rack to be cabled and powered. Dependent on SU-01/04 FAT completion and fiber transceiver delivery.',
           },
           {
             id: 'CX-1-5',
             kind: 'clause',
-            clause: 'SYS-03 / SS-03A',
-            text: 'BMS Head-End (SS-03A): L1 and L2 complete; L3 pre-functional testing in progress. On plan.',
+            clause: 'SYS-NETWORK / SS-FABRIC',
+            text: 'Spectrum-X 800G Dual-Plane Fabric (L2 SAT): At Risk. SN5610 leaf switch OSFP transceivers are included in the held customs batch (SHP-FIBER-001). Fabric verification cannot proceed without full transceiver inventory.',
           },
           {
             id: 'CX-1-6',
             kind: 'clause',
-            clause: 'SYS-01 rollup',
-            text: 'System 01 integrated systems testing (L5) is gated on MV Distribution readiness. L4 Functional and L5 Integrated Systems Testing cannot be sequenced until TX-01 is delivered and energized.',
+            clause: 'SYS-COOLING / SS-COOLING-CDU',
+            text: 'Liquid Cooling CDU Array (L1 FAT): At Risk. CDU vendor submittal proposes 128 kW capacity vs SPEC-COOL-001 requirement of 142 kW. Spec deviation RFI must be resolved before FAT witness. If accepted with de-rated operation, cluster TDP must be reduced by 10%.',
+          },
+          {
+            id: 'CX-1-7',
+            kind: 'clause',
+            clause: 'SYS-COOLING / SS-COOLING-CDU (L2)',
+            text: 'CDU Site Acceptance (L2): Not Started. Gated on L1 FAT resolution and spec deviation outcome.',
+          },
+          {
+            id: 'CX-1-8',
+            kind: 'clause',
+            clause: 'SYS-POWER / SS-POWER-PDU',
+            text: 'Power Shelf FAT (L1): In Progress. Load bank testing for Batch 1 (33 of 64 shelves) is in progress at Volta Power Systems factory. On plan.',
+          },
+          {
+            id: 'CX-1-9',
+            kind: 'clause',
+            clause: 'SYS-POWER / SS-POWER-PDU (L2)',
+            text: 'Power Distribution Site Acceptance (L2): Not Started. Gated on site delivery of all 64 power shelves and PDU installation completion.',
+          },
+          {
+            id: 'CX-1-10',
+            kind: 'clause',
+            clause: 'SYS-MGMT / SS-OOB-MGMT',
+            text: 'OOB Management (SN2201) FAT (L1): Complete. All 16 SN2201 switches passed Redfish API, IPMI, and network isolation testing at NVIDIA OEM facility.',
+          },
+          {
+            id: 'CX-1-11',
+            kind: 'clause',
+            clause: 'SYS-MGMT / SS-OOB-MGMT (L2)',
+            text: 'OOB Network Site Acceptance (L2): Complete. BMC connectivity verified for all 144 compute tray BlueField-3 BMCs and all rack in-rack SN2201 switches.',
+          },
+          {
+            id: 'CX-1-12',
+            kind: 'clause',
+            clause: 'SYS-MGMT / SS-OOB-MGMT (L3)',
+            text: 'OOB Pre-Functional (L3): In Progress. NVIDIA Mission Control integration in progress. On plan.',
+          },
+          {
+            id: 'CX-1-13',
+            kind: 'clause',
+            clause: 'L5 Rollup',
+            text: 'AI Factory L5 Integrated Systems Testing cannot be sequenced until GPU Compute (SS-COMPUTE-A), NVLink Domain (SS-NVLINK), Spectrum-X Fabric (SS-FABRIC), and Cooling CDU (SS-COOLING-CDU) subsystems achieve L4 Functional clearance. Current critical path: rack delivery → fiber transceiver delivery → NVLink cabling → L2 SAT → GPU burn-in → L5.',
           },
         ],
       },
     ],
   },
   {
-    id: 'DOC-LL-MERIDIAN',
-    title: 'LL-DH0-2024 — Project Meridian Lessons-Learned Register',
+    id: 'DOC-LL-PILOT',
+    title: 'LL-PILOT-2025 — AI Factory Hyderabad Pilot Lessons-Learned Register',
     docType: 'ScheduleExtract',
     revision: 'Final',
-    issued: '30-Nov-2024',
+    issued: '15-Dec-2025',
     sourceSystem: 'Knowledge Graph',
     pages: [
       {
         page: 1,
         blocks: [
-          { id: 'LL-1-1', kind: 'heading', text: 'DH-0 LESSONS LEARNED — CROSS-PROJECT MEMORY' },
+          { id: 'LL-1-1', kind: 'heading', text: 'HYDERABAD PILOT (NVL72-PILOT) LESSONS LEARNED — CROSS-PROJECT MEMORY' },
           {
             id: 'LL-1-2',
             kind: 'clause',
-            clause: 'DEC-M12',
-            text: 'Transformer lead-time slip on DH-0 was mitigated by energizing on temporary phased power while awaiting the delayed unit, and re-baselining the A-line. Outcome: recovered 6 weeks of L5 IST float with no acceleration premium. Approved by J. Mason, 12-Sep-2024.',
+            clause: 'DEC-P01',
+            text: 'QSFP112 transceiver customs delay on NVL72-PILOT was mitigated by air-freighting the blocked batch from Tokyo to Hyderabad and pre-terminating fiber cables in parallel with the customs clearance. Outcome: NVLink cabling for 2-SU pilot recovered 3 weeks of commissioning float. Air-freight premium: USD 42,000. Approved by A. Sharma, 14-Jun-2025.',
           },
           {
             id: 'LL-1-3',
             kind: 'clause',
-            clause: 'DEC-M07',
-            text: 'A 400V cooling unit was accepted against a 480V requirement via a qualified interposing step-up transformer. No schedule impact. Basis retained for reuse on future data halls. Approved by A. Rao, 30-May-2024.',
+            clause: 'DEC-P02',
+            text: 'CDU cooling capacity (128 kW submitted vs 142 kW required) was resolved on NVL72-PILOT via an RFI requesting an uprated coil insert kit from the vendor. Vendor supplied the upgrade within 6 weeks; cluster ran at 90% TDP (65 active GPUs of 72) during interim. No milestone impact. Approved by K. Chen, 22-Apr-2025.',
           },
         ],
       },
     ],
   },
   {
-    id: 'DOC-STD-TIA942',
-    title: 'TIA-942-C — Telecommunications Infrastructure Standard (Project Extract)',
+    id: 'DOC-NVRA-001',
+    title: 'NVIDIA GB300 NVL72 AI Factory Reference Architecture (Enterprise RA)',
     docType: 'Standard',
-    revision: 'C',
-    issued: '01-Jan-2024',
+    revision: '1.0',
+    issued: '15-Jan-2026',
     sourceSystem: 'Standards Library',
     pages: [
       {
         page: 1,
         blocks: [
           {
-            id: 'TIA-1-1',
+            id: 'NR-1-1',
             kind: 'clause',
-            clause: '6.4',
-            text: 'Electrical systems serving computer rooms shall provide redundancy consistent with the rated class of the facility, including maintainability of power paths without disruption to critical load.',
+            clause: 'Overview §2.1',
+            text: 'The NVIDIA Enterprise RA using 2-4-5-800 (dual plane) node architecture with NVIDIA GB300 NVL72 and NVIDIA Spectrum-X Networking offers a fully integrated, rack-scale solution optimized for the most demanding AI workloads. Each NVL72 rack (Scalable Unit) integrates 18 compute trays with 72 NVIDIA Blackwell Ultra GPUs and 36 NVIDIA Grace CPUs.',
+          },
+          {
+            id: 'NR-1-2',
+            kind: 'clause',
+            clause: 'Power §3.2',
+            text: 'Full rack requiring up to 142 kW. 8 power shelves of 33 kW, with each shelf having six 5.5 kW PSUs. The rack solution requires direct liquid cooling.',
           },
         ],
       },

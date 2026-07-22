@@ -1,9 +1,12 @@
 /**
- * Seed graph — Project Meghdoot NM-1.
+ * Seed graph — NVIDIA AI Factory NVL72-AIFC-001 (Pune Cluster).
  *
  * Output of the Ingestion & Perception layer after entity resolution:
- * typed entities mapped from Octave / P6 / mail artifacts into the governed
- * ontology (anti-corruption at the edge — no external ids leak as keys).
+ * typed entities mapped from P6 / vendor documents / commissioning matrix
+ * into the governed ontology.
+ *
+ * Based on: NVIDIA GB300 NVL72 AI Factory Reference Architecture
+ * ET AI Hackathon 2026 — Problem Statement 4
  */
 
 import type { EntityBase, Edge } from '@prometheus/ontology';
@@ -12,93 +15,158 @@ import { applyPhase2Seed } from './seed-phase2';
 import { applyPhase3Seed } from './seed-phase3';
 
 function n(partial: Omit<EntityBase, 'verification' | 'owner'> & Partial<Pick<EntityBase, 'verification' | 'owner'>>): EntityBase {
-  return { verification: 'SystemVerified', owner: 'PER-MASON', ...partial };
+  return { verification: 'SystemVerified', owner: 'PER-SHARMA', ...partial };
 }
 
 const NODES: EntityBase[] = [
-  n({ id: 'PRJ-AQUILA', type: 'Project', tag: 'AQUILA-DH1', name: 'Project Meghdoot — Data Hall 1', status: 'Execution', sourceSystem: 'Octave', props: { region: 'EMEA', phase: 'Build' } }),
-  n({ id: 'SYS-01', type: 'System', tag: 'SYS-01', name: 'MV/LV Power Distribution', status: 'In Delivery', props: {} }),
-  n({ id: 'SYS-02', type: 'System', tag: 'SYS-02', name: 'Cooling Distribution', status: 'In Delivery', props: {} }),
+  // ── Project ──
+  n({ id: 'PRJ-NVL72-AIFC', type: 'Project', tag: 'NVL72-AIFC-001', name: 'NVIDIA AI Factory — Pune Cluster (NVL72-AIFC-001)', status: 'Execution', sourceSystem: 'Primavera P6', props: { region: 'APAC', phase: 'Construction & Commissioning', type: 'NVIDIA AI Factory (576 GPU / 8 SU)' } }),
 
-  n({ id: 'EQ-TX01', type: 'Equipment', tag: 'TX-01', name: 'Unit Substation Transformer 1', status: 'On Order', sourceSystem: 'Octave', props: { rating: '2,500 kVA', criticality: 'Critical Path' } }),
-  n({ id: 'EQ-TX02', type: 'Equipment', tag: 'TX-02', name: 'Unit Substation Transformer 2', status: 'On Order', sourceSystem: 'Octave', props: { rating: '2,500 kVA' } }),
-  n({ id: 'EQ-SWG01', type: 'Equipment', tag: 'SWG-01', name: 'LV Switchgear Lineup 1', status: 'Submittal Review', sourceSystem: 'Octave', props: { rating: '4,000 A' } }),
-  n({ id: 'EQ-CDU01', type: 'Equipment', tag: 'CDU-01', name: 'Cooling Distribution Unit 1', status: 'Submittal Review', sourceSystem: 'Octave', props: { duty: '1,200 kW' } }),
+  // ── Systems ──
+  n({ id: 'SYS-COMPUTE', type: 'System', tag: 'SYS-COMPUTE', name: 'GB300 NVL72 Compute Cluster (8 SUs / 576 GPUs)', status: 'In Delivery', props: { gpuCount: 576, suCount: 8 } }),
+  n({ id: 'SYS-NETWORK', type: 'System', tag: 'SYS-NETWORK', name: 'Spectrum-X 800G Ethernet Fabric (Dual-Plane)', status: 'In Delivery', props: { technology: 'Spectrum-X', planes: 2 } }),
+  n({ id: 'SYS-POWER', type: 'System', tag: 'SYS-POWER', name: 'Power Distribution System (142 kW/rack × 8)', status: 'In Delivery', props: { totalCapacityKw: 1136, redundancy: 'N+1 per shelf' } }),
+  n({ id: 'SYS-COOLING', type: 'System', tag: 'SYS-COOLING', name: 'Direct Liquid Cooling Distribution System (8 CDUs)', status: 'In Delivery', props: { cduCount: 8, capacityPerCduKw: 142 } }),
+  n({ id: 'SYS-MGMT', type: 'System', tag: 'SYS-MGMT', name: 'Out-of-Band Management Network (SN2201 OOB Switches)', status: 'In Delivery', props: { switchCount: 16 } }),
 
-  n({ id: 'SPEC-ELEC-01', type: 'Specification', tag: 'SPEC-ELEC-01', name: 'Electrical Specification — MV/LV Power Distribution', status: 'Rev C', props: { docId: 'DOC-SPEC-ELEC-01' } }),
-  n({ id: 'SPEC-MECH-02', type: 'Specification', tag: 'SPEC-MECH-02', name: 'Mechanical Specification — Cooling Distribution', status: 'Rev B', props: { docId: 'DOC-SPEC-MECH-02' } }),
-  n({ id: 'STD-TIA942', type: 'Standard', tag: 'TIA-942-C', name: 'TIA-942-C Telecommunications Infrastructure Standard', props: { docId: 'DOC-STD-TIA942' } }),
-  n({ id: 'STD-IEEEC57', type: 'Standard', tag: 'IEEE C57.12.00', name: 'IEEE C57.12.00 — Transformer Rating Requirements', props: {} }),
+  // ── Compute Equipment ──
+  n({ id: 'EQ-NVL72-SU01', type: 'Equipment', tag: 'SU-01', name: 'GB300 NVL72 Rack — Scalable Unit 01', status: 'In Manufacture', sourceSystem: 'Primavera P6', props: { gpuCount: 72, trays: 18, powerKw: 142, coolingType: 'Direct Liquid Cooling', criticality: 'Critical Path' } }),
+  n({ id: 'EQ-NVL72-SU02', type: 'Equipment', tag: 'SU-02', name: 'GB300 NVL72 Rack — Scalable Unit 02', status: 'In Manufacture', sourceSystem: 'Primavera P6', props: { gpuCount: 72, trays: 18, powerKw: 142, coolingType: 'Direct Liquid Cooling' } }),
+  n({ id: 'EQ-NVL72-SU03', type: 'Equipment', tag: 'SU-03', name: 'GB300 NVL72 Rack — Scalable Unit 03', status: 'In Manufacture', sourceSystem: 'Primavera P6', props: { gpuCount: 72, trays: 18, powerKw: 142, coolingType: 'Direct Liquid Cooling' } }),
+  n({ id: 'EQ-NVL72-SU04', type: 'Equipment', tag: 'SU-04', name: 'GB300 NVL72 Rack — Scalable Unit 04', status: 'In Manufacture', sourceSystem: 'Primavera P6', props: { gpuCount: 72, trays: 18, powerKw: 142, coolingType: 'Direct Liquid Cooling' } }),
+  n({ id: 'EQ-NVSWITCH', type: 'Equipment', tag: 'NVSWITCH-TRAY', name: 'NVLink 5th-Gen Switch Trays (9/rack × 8 racks)', status: 'On Order', sourceSystem: 'Primavera P6', props: { traysTotal: 72, nvSwitchAsics: 144, nvLinkBandwidthTbps: 130, description: '9 NVLink switch trays per NVL72 rack; 2 NVSwitch ASICs each' } }),
+  n({ id: 'EQ-CX8-MZB', type: 'Equipment', tag: 'CX8-MZB', name: 'ConnectX-8 Mezzanine Network Boards', status: 'On Order', sourceSystem: 'Primavera P6', props: { boardsTotal: 288, nicsTotal: 576, bandwidthPerNicGbps: 800, description: '2 boards × 2 ConnectX-8 ASICs per tray = 4 SuperNICs per tray' } }),
+  n({ id: 'EQ-BF3-DPU', type: 'Equipment', tag: 'BF3-DPU', name: 'BlueField-3 B3240 DPUs (1/tray × 144 trays)', status: 'On Order', sourceSystem: 'Primavera P6', props: { dpuCount: 144, model: 'BlueField-3 B3240', aggregateBandwidthGbps: 480, ports: 2, portSpeedGbps: 400, description: 'North/South fabric; ECPF/DPU mode; Redfish BMC integration' } }),
 
-  // Requirements — typed, deterministic parameters live in props.
-  n({ id: 'REQ-CDU-041', type: 'Requirement', tag: 'REQ-CDU-041', name: 'CDU electrical supply: 480 V / 3-phase / 60 Hz', status: 'Approved', props: { parameter: 'Supply voltage', operator: '=', value: 480, unit: 'V', secondary: '60 Hz, 3-phase', docId: 'DOC-SPEC-MECH-02', blockId: 'SM2-1-4', page: 1, clause: '4.1.2' } }),
-  n({ id: 'REQ-CDU-044', type: 'Requirement', tag: 'REQ-CDU-044', name: 'CDU operating weight stated for structural coordination', status: 'Approved', props: { parameter: 'Operating weight (flooded)', operator: '=', value: 'stated', docId: 'DOC-SPEC-MECH-02', blockId: 'SM2-2-1', page: 2, clause: '4.3.1' } }),
-  n({ id: 'REQ-TX-032', type: 'Requirement', tag: 'REQ-TX-032', name: 'Transformer secondary voltage: 480Y/277 V', status: 'Approved', props: { parameter: 'Secondary voltage', operator: '=', value: 480, unit: 'V', docId: 'DOC-SPEC-ELEC-01', blockId: 'SE1-1-2', page: 1, clause: '3.2.1' } }),
-  n({ id: 'REQ-SWG-021', type: 'Requirement', tag: 'REQ-SWG-021', name: 'Switchgear short-circuit withstand ≥ 65 kA', status: 'Approved', props: { parameter: 'Short-circuit withstand', operator: '>=', value: 65, unit: 'kA', docId: 'DOC-SPEC-ELEC-01', blockId: 'SE1-2-2', page: 2, clause: '5.1.4' } }),
+  // ── Network Equipment ──
+  n({ id: 'EQ-SN5610-LEAF', type: 'Equipment', tag: 'SN5610-LEAF', name: 'NVIDIA SN5610 Leaf Switches (Compute E/W)', status: 'On Order', sourceSystem: 'Primavera P6', props: { switchCount: 32, ports: 64, portSpeedGbps: 800, role: 'GPU Compute Leaf', planes: 2, description: 'Rail-optimized; 4 leaf switches per plane × 2 planes × 4 GPU rail positions' } }),
+  n({ id: 'EQ-SN5600-SPINE', type: 'Equipment', tag: 'SN5600-SPINE', name: 'NVIDIA SN5600 Spine Switches (Compute + Converged)', status: 'On Order', sourceSystem: 'Primavera P6', props: { switchCount: 16, ports: 128, portSpeedGbps: 400, role: 'Compute Spine / Converged Spine', description: 'NVIDIA SN5600 128-port 400 Gb/s switches for both compute and converged fabrics' } }),
+  n({ id: 'EQ-SN2201-OOB', type: 'Equipment', tag: 'SN2201-OOB', name: 'NVIDIA SN2201 OOB Management Switches (16 total)', status: 'In Transit', sourceSystem: 'Primavera P6', props: { switchCount: 16, ports1g: 48, ports100g: 4, role: 'Out-of-Band Management', description: '2 SN2201 switches per SU; 16 total for 8-SU cluster' } }),
+  n({ id: 'EQ-CDU-RACK', type: 'Equipment', tag: 'CDU-RACK', name: 'Rack-Level Liquid Cooling CDUs (8 total)', status: 'Submittal Review', sourceSystem: 'Primavera P6', props: { cduCount: 8, requiredCapacityKw: 142, submittedCapacityKw: 128, vendor: 'Precision Cooling Systems AG', description: 'Direct liquid cooling per NVL72 rack; CDU submittal under review — SPEC DEVIATION DETECTED' } }),
+  n({ id: 'EQ-PSU-SHELF', type: 'Equipment', tag: 'PSU-SHELF', name: '33 kW Power Shelves (8/rack × 8 racks = 64 total)', status: 'On Order', sourceSystem: 'Primavera P6', props: { shelfCount: 64, ratingPerShelfKw: 33, psusPerShelf: 6, ratingPerPsuKw: 5.5, vendor: 'Volta Power Systems', singleSource: true, description: '8 power shelves per NVL72 rack; 6 × 5.5 kW hot-swap PSUs per shelf; N+1 per shelf' } }),
 
-  // Submittals
-  n({ id: 'SUB-CDU01-R1', type: 'Submittal', tag: 'SUB-CDU01-R1', name: 'CDU-01 Vendor Submittal Rev 1', status: 'Under Review', sourceSystem: 'Octave', props: { docId: 'DOC-SUB-CDU01-R1', vendor: 'Helios Thermal Systems' } }),
-  n({ id: 'SUB-TX01-R2', type: 'Submittal', tag: 'SUB-TX01-R2', name: 'TX-01 Transformer Submittal Rev 2', status: 'Under Review', sourceSystem: 'Octave', props: { docId: 'DOC-SUB-TX01-R2', vendor: 'Kappa Transformer Works' } }),
-  n({ id: 'SUB-SWG01-R1', type: 'Submittal', tag: 'SUB-SWG01-R1', name: 'SWG-01 Switchgear Submittal Rev 1', status: 'Under Review', sourceSystem: 'Octave', props: { docId: 'DOC-SUB-SWG01-R1', vendor: 'Meridian Switchgear' } }),
+  // ── Specifications ──
+  n({ id: 'SPEC-NVRA-001', type: 'Specification', tag: 'SPEC-NVRA-001', name: 'NVIDIA GB300 NVL72 AI Factory Reference Architecture', status: 'Rev 1.0', props: { docId: 'DOC-NVRA-001', url: 'https://docs.nvidia.com/enterprise-reference-architectures/nvl72-ai-factory/latest/' } }),
+  n({ id: 'SPEC-COOL-001', type: 'Specification', tag: 'SPEC-COOL-001', name: 'AI Factory Liquid Cooling System Specification', status: 'Rev B', props: { docId: 'DOC-SPEC-COOL' } }),
+  n({ id: 'SPEC-PWR-001', type: 'Specification', tag: 'SPEC-PWR-001', name: 'AI Factory Power Infrastructure Specification', status: 'Rev B', props: { docId: 'DOC-SPEC-PWR' } }),
+  n({ id: 'SPEC-NET-001', type: 'Specification', tag: 'SPEC-NET-001', name: 'Spectrum-X 800G Dual-Plane Network Specification', status: 'Rev A', props: { docId: 'DOC-SPEC-NET' } }),
+  n({ id: 'SPEC-NVLINK-001', type: 'Specification', tag: 'SPEC-NVLINK-001', name: 'NVLink 5th-Gen Domain Specification', status: 'Rev A', props: { docId: 'DOC-SPEC-NVLINK' } }),
 
-  // Procurement
-  n({ id: 'VEN-KAPPA', type: 'Vendor', tag: 'VEN-KAPPA', name: 'Kappa Transformer Works', status: 'Active', props: { region: 'EMEA', onTimeRate12mo: 0.61, city: 'Istanbul', country: 'Türkiye', lat: 41.0, lon: 29.0, riskDocId: 'DOC-VPR' } }),
-  n({ id: 'VEN-HELIOS', type: 'Vendor', tag: 'VEN-HELIOS', name: 'Helios Thermal Systems', status: 'Active', props: { region: 'EU', onTimeRate12mo: 0.88, city: 'Frankfurt', country: 'Germany', lat: 50.1, lon: 8.7, riskDocId: 'DOC-VPR' } }),
-  n({ id: 'VEN-MERIDIAN', type: 'Vendor', tag: 'VEN-MERIDIAN', name: 'Meridian Switchgear', status: 'Force Majeure', props: { region: 'EMEA', onTimeRate12mo: 0.74, city: 'Milan', country: 'Italy', lat: 45.5, lon: 9.2, riskDocId: 'DOC-VB-MERIDIAN' } }),
-  n({ id: 'PO-884', type: 'PurchaseOrder', tag: 'PO-884', name: 'PO-884 — TX-01 / TX-02 Unit Substation Transformers', status: 'Awarded', sourceSystem: 'Octave', props: { awarded: '06-Mar-2026', quoteDocId: 'DOC-VQ-884' } }),
-  n({ id: 'PO-992', type: 'PurchaseOrder', tag: 'PO-992', name: 'PO-992 — SWG-01 LV Switchgear', status: 'Awarded', sourceSystem: 'Octave', props: { awarded: '20-Apr-2026' } }),
+  // ── Requirements ──
+  n({ id: 'REQ-COOL-001', type: 'Requirement', tag: 'REQ-COOL-001', name: 'CDU thermal capacity ≥ 142 kW per rack', status: 'Approved', props: { parameter: 'CDU thermal capacity', operator: '>=', value: 142, unit: 'kW', docId: 'DOC-SPEC-COOL', blockId: 'SC-1-4', page: 1, clause: '4.1.1' } }),
+  n({ id: 'REQ-COOL-002', type: 'Requirement', tag: 'REQ-COOL-002', name: 'CDU inrush current must be stated in vendor submittal', status: 'Approved', props: { parameter: 'Inrush current (peak, 200ms)', operator: '=', value: 'stated', docId: 'DOC-SPEC-COOL', blockId: 'SC-2-1', page: 2, clause: '4.3.2' } }),
+  n({ id: 'REQ-NET-001', type: 'Requirement', tag: 'REQ-NET-001', name: 'ConnectX-8 compute bandwidth ≥ 800 Gb/s per GPU', status: 'Approved', props: { parameter: 'Compute NIC bandwidth', operator: '>=', value: 800, unit: 'Gb/s', secondary: '16 × 400G links in dual-plane breakout', docId: 'DOC-SPEC-NET', blockId: 'SN-1-2', page: 1, clause: '5.1.2' } }),
+  n({ id: 'REQ-NVLINK-001', type: 'Requirement', tag: 'REQ-NVLINK-001', name: 'Each GPU connected to 18 NVSwitch ASICs via NVLink 5th-gen', status: 'Approved', props: { parameter: 'NVLink ports per GPU', operator: '=', value: 18, unit: 'links', docId: 'DOC-SPEC-NVLINK', blockId: 'SNL-1-2', page: 1, clause: '6.2.1' } }),
 
-  // Schedule activities (typed fields for deterministic date math)
-  n({ id: 'ACT-A100', type: 'ScheduleActivity', tag: 'A100', name: 'Award TX-01 Purchase Order', status: 'Complete', sourceSystem: 'Primavera P6', props: { activityId: 'A100', baselineStart: '2026-02-16', baselineFinish: '2026-03-06', freeFloatWeeks: 0 } }),
-  n({ id: 'ACT-A102', type: 'ScheduleActivity', tag: 'A102', name: 'TX-01 Manufacture & Delivery', status: 'In Progress', sourceSystem: 'Primavera P6', props: { activityId: 'A102', baselineStart: '2026-03-09', baselineFinish: '2027-11-29', assumedLeadTimeWeeks: 90, freeFloatWeeks: 0 } }),
-  n({ id: 'ACT-A140', type: 'ScheduleActivity', tag: 'A140', name: 'NM-1 Energization', status: 'Not Started', sourceSystem: 'Primavera P6', props: { activityId: 'A140', baselineStart: '2027-12-06', baselineFinish: '2028-01-14', freeFloatWeeks: 12 } }),
-  n({ id: 'ACT-A200', type: 'ScheduleActivity', tag: 'A200', name: 'L4 Functional Testing', status: 'Not Started', sourceSystem: 'Primavera P6', props: { activityId: 'A200', baselineStart: '2028-01-17', baselineFinish: '2028-03-10', freeFloatWeeks: 18, level: 'L4' } }),
-  n({ id: 'ACT-A210', type: 'ScheduleActivity', tag: 'A210', name: 'L5 Integrated Systems Testing', status: 'Not Started', sourceSystem: 'Primavera P6', props: { activityId: 'A210', baselineStart: '2028-03-13', baselineFinish: '2028-05-05', freeFloatWeeks: 0, level: 'L5' } }),
+  // ── Submittals ──
+  n({ id: 'SUB-CDU-R1', type: 'Submittal', tag: 'SUB-CDU-R1', name: 'Liquid Cooling CDU Vendor Submittal Rev 1 — SPEC DEVIATION', status: 'Under Review', sourceSystem: 'Primavera P6', props: { docId: 'DOC-SUB-CDU-R1', vendor: 'Precision Cooling Systems AG', deviation: 'Proposed capacity 128 kW vs required 142 kW' } }),
+  n({ id: 'SUB-RACK-R2', type: 'Submittal', tag: 'SUB-RACK-R2', name: 'GB300 NVL72 Rack Assembly Submittal Rev 2 — COMPLIANT', status: 'Approved', sourceSystem: 'Primavera P6', props: { docId: 'DOC-SUB-RACK-R2', vendor: 'NVIDIA OEM Partner' } }),
+  n({ id: 'SUB-BF3-R1', type: 'Submittal', tag: 'SUB-BF3-R1', name: 'BlueField-3 B3240 DPU Submittal Rev 1 — COMPLIANT', status: 'Approved', sourceSystem: 'Primavera P6', props: { docId: 'DOC-SUB-BF3-R1', vendor: 'NVIDIA OEM Partner' } }),
 
-  // People & agents
-  n({ id: 'PER-MASON', type: 'Person', tag: 'J.MASON', name: 'J. Mason', status: 'Active', props: { role: 'Project Director' } }),
-  n({ id: 'PER-RIVERA', type: 'Person', tag: 'A.RIVERA', name: 'A. Rivera', status: 'Active', props: { role: 'Discipline Engineer' } }),
-  n({ id: 'AGT-SPEC', type: 'AIAgent', tag: 'AGT-SPEC', name: 'Spec-Compliance Agent', status: 'Active', props: { domain: 'Specification compliance' } }),
-  n({ id: 'AGT-SCHED', type: 'AIAgent', tag: 'AGT-SCHED', name: 'Schedule-Risk Agent', status: 'Active', props: { domain: 'Schedule & lead-time risk' } }),
+  // ── Vendors ──
+  n({ id: 'VEN-NVIDIA-OEM', type: 'Vendor', tag: 'VEN-OEM', name: 'NVIDIA OEM Partner — Rack Assembly', status: 'Active', props: { region: 'APAC', onTimeRate12mo: 0.89, city: 'Shenzhen', country: 'China', lat: 22.54, lon: 114.06, scope: 'GB300 NVL72 Rack assembly, FAT, OEM support' } }),
+  n({ id: 'VEN-COOLANT', type: 'Vendor', tag: 'VEN-COOL', name: 'Precision Cooling Systems AG', status: 'Active', props: { region: 'EU', onTimeRate12mo: 0.91, city: 'Stuttgart', country: 'Germany', lat: 48.78, lon: 9.18, scope: 'Rack-level CDU for 8× NVL72 racks' } }),
+  n({ id: 'VEN-FIBER', type: 'Vendor', tag: 'VEN-FIBER', name: 'OptiCore Japan — QSFP112/OSFP Transceivers', status: 'Active', props: { region: 'APAC', onTimeRate12mo: 0.84, city: 'Tokyo', country: 'Japan', lat: 35.68, lon: 139.69, scope: 'QSFP112, OSFP, SFP28 optical transceivers for Spectrum-X fabric', riskDocId: 'DOC-VN-FIBER' } }),
+  n({ id: 'VEN-PDU', type: 'Vendor', tag: 'VEN-PDU', name: 'Volta Power Systems — 33kW PSU Shelves', status: 'Active', props: { region: 'SEA', onTimeRate12mo: 0.77, city: 'Singapore', country: 'Singapore', lat: 1.35, lon: 103.82, scope: '33 kW power shelves; sole qualified source', riskDocId: 'DOC-VPR-2026' } }),
+  n({ id: 'VEN-CIVIL', type: 'Vendor', tag: 'VEN-CIVIL', name: 'Bharat Infrastructure Systems', status: 'Active', props: { region: 'APAC', onTimeRate12mo: 0.93, city: 'Pune', country: 'India', lat: 18.52, lon: 73.85, scope: 'Data hall civil works, raised floor, cable trays' } }),
+
+  // ── Purchase Orders ──
+  n({ id: 'PO-2061', type: 'PurchaseOrder', tag: 'PO-2061', name: 'PO-2061 — 8× GB300 NVL72 Racks (8 Scalable Units)', status: 'Awarded', sourceSystem: 'Primavera P6', props: { awarded: '01-Apr-2026', assumedLeadTimeWeeks: 18, quoteDocId: 'DOC-SUB-RACK-R2' } }),
+  n({ id: 'PO-2087', type: 'PurchaseOrder', tag: 'PO-2087', name: 'PO-2087 — 8× Rack-Level Liquid Cooling CDUs', status: 'Awarded', sourceSystem: 'Primavera P6', props: { awarded: '15-Mar-2026', assumedLeadTimeWeeks: 20 } }),
+  n({ id: 'PO-2094', type: 'PurchaseOrder', tag: 'PO-2094', name: 'PO-2094 — Optical Transceiver Batch (QSFP112/OSFP)', status: 'Awarded', sourceSystem: 'Primavera P6', props: { awarded: '20-Apr-2026', assumedLeadTimeWeeks: 10 } }),
+  n({ id: 'PO-2098', type: 'PurchaseOrder', tag: 'PO-2098', name: 'PO-2098 — 64× 33kW Power Shelves (8/rack × 8 racks)', status: 'Awarded', sourceSystem: 'Primavera P6', props: { awarded: '01-Mar-2026', assumedLeadTimeWeeks: 22 } }),
+
+  // ── Schedule Activities ──
+  n({ id: 'ACT-S100', type: 'ScheduleActivity', tag: 'S100', name: 'Site Civil & Structural Preparation', status: 'Complete', sourceSystem: 'Primavera P6', props: { activityId: 'S100', baselineStart: '2025-10-01', baselineFinish: '2026-02-28', freeFloatWeeks: 0 } }),
+  n({ id: 'ACT-S200', type: 'ScheduleActivity', tag: 'S200', name: 'Power Infrastructure Installation (UPS, PDU, Busbar)', status: 'In Progress', sourceSystem: 'Primavera P6', props: { activityId: 'S200', baselineStart: '2026-01-15', baselineFinish: '2026-07-31', freeFloatWeeks: 0, assumedLeadTimeWeeks: 28 } }),
+  n({ id: 'ACT-S300', type: 'ScheduleActivity', tag: 'S300', name: 'Liquid Cooling Infrastructure Installation (CDU, Manifolds)', status: 'In Progress', sourceSystem: 'Primavera P6', props: { activityId: 'S300', baselineStart: '2026-02-01', baselineFinish: '2026-08-15', freeFloatWeeks: 2, assumedLeadTimeWeeks: 28 } }),
+  n({ id: 'ACT-S400', type: 'ScheduleActivity', tag: 'S400', name: 'GB300 NVL72 Rack Delivery (8 SUs from OEM)', status: 'In Progress', sourceSystem: 'Primavera P6', props: { activityId: 'S400', baselineStart: '2026-04-01', baselineFinish: '2026-08-29', freeFloatWeeks: 0, assumedLeadTimeWeeks: 18 } }),
+  n({ id: 'ACT-S500', type: 'ScheduleActivity', tag: 'S500', name: 'Rack Installation, Network Cabling & Fiber Termination', status: 'Not Started', sourceSystem: 'Primavera P6', props: { activityId: 'S500', baselineStart: '2026-09-01', baselineFinish: '2026-11-30', freeFloatWeeks: 0 } }),
+  n({ id: 'ACT-S600', type: 'ScheduleActivity', tag: 'S600', name: 'Spectrum-X 800G Fabric Commissioning (L2 SAT)', status: 'Not Started', sourceSystem: 'Primavera P6', props: { activityId: 'S600', baselineStart: '2026-10-15', baselineFinish: '2026-12-31', freeFloatWeeks: 4 } }),
+  n({ id: 'ACT-S700', type: 'ScheduleActivity', tag: 'S700', name: 'NVLink 5th-Gen Domain Validation (72-GPU × 8 SU)', status: 'Not Started', sourceSystem: 'Primavera P6', props: { activityId: 'S700', baselineStart: '2027-01-05', baselineFinish: '2027-02-28', freeFloatWeeks: 0 } }),
+  n({ id: 'ACT-S800', type: 'ScheduleActivity', tag: 'S800', name: 'GPU Burn-in & Thermal Baseline (L3 Pre-Functional)', status: 'Not Started', sourceSystem: 'Primavera P6', props: { activityId: 'S800', baselineStart: '2027-03-01', baselineFinish: '2027-04-30', freeFloatWeeks: 4, level: 'L3' } }),
+  n({ id: 'ACT-S900', type: 'ScheduleActivity', tag: 'S900', name: 'L5 AI Workload Acceptance Testing (576-GPU cluster)', status: 'Not Started', sourceSystem: 'Primavera P6', props: { activityId: 'S900', baselineStart: '2027-05-01', baselineFinish: '2027-06-30', freeFloatWeeks: 0, level: 'L5' } }),
+
+  // ── People & Agents ──
+  n({ id: 'PER-SHARMA', type: 'Person', tag: 'A.SHARMA', name: 'A. Sharma', status: 'Active', props: { role: 'AI Factory Project Director' } }),
+  n({ id: 'PER-CHEN', type: 'Person', tag: 'K.CHEN', name: 'K. Chen', status: 'Active', props: { role: 'Infrastructure Engineer' } }),
+  n({ id: 'AGT-SPEC', type: 'AIAgent', tag: 'AGT-SPEC', name: 'Spec-Compliance Agent', status: 'Active', props: { domain: 'NVIDIA specification compliance & submittal review' } }),
+  n({ id: 'AGT-SCHED', type: 'AIAgent', tag: 'AGT-SCHED', name: 'Schedule-Risk Agent', status: 'Active', props: { domain: 'AI Factory build schedule & lead-time risk' } }),
 ];
 
 const EDGES: Array<Omit<Edge, 'id'>> = [
-  { from: 'PRJ-AQUILA', to: 'SYS-01', verb: 'CONTAINS' },
-  { from: 'PRJ-AQUILA', to: 'SYS-02', verb: 'CONTAINS' },
-  { from: 'SYS-01', to: 'EQ-TX01', verb: 'CONTAINS' },
-  { from: 'SYS-01', to: 'EQ-TX02', verb: 'CONTAINS' },
-  { from: 'SYS-01', to: 'EQ-SWG01', verb: 'CONTAINS' },
-  { from: 'SYS-02', to: 'EQ-CDU01', verb: 'CONTAINS' },
+  // Project contains systems
+  { from: 'PRJ-NVL72-AIFC', to: 'SYS-COMPUTE', verb: 'CONTAINS' },
+  { from: 'PRJ-NVL72-AIFC', to: 'SYS-NETWORK', verb: 'CONTAINS' },
+  { from: 'PRJ-NVL72-AIFC', to: 'SYS-POWER', verb: 'CONTAINS' },
+  { from: 'PRJ-NVL72-AIFC', to: 'SYS-COOLING', verb: 'CONTAINS' },
+  { from: 'PRJ-NVL72-AIFC', to: 'SYS-MGMT', verb: 'CONTAINS' },
 
-  { from: 'SPEC-MECH-02', to: 'REQ-CDU-041', verb: 'SPECIFIES' },
-  { from: 'SPEC-MECH-02', to: 'REQ-CDU-044', verb: 'SPECIFIES' },
-  { from: 'SPEC-ELEC-01', to: 'REQ-TX-032', verb: 'SPECIFIES' },
-  { from: 'SPEC-ELEC-01', to: 'REQ-SWG-021', verb: 'SPECIFIES' },
-  { from: 'REQ-CDU-041', to: 'EQ-CDU01', verb: 'APPLIES_TO' },
-  { from: 'REQ-CDU-044', to: 'EQ-CDU01', verb: 'APPLIES_TO' },
-  { from: 'REQ-TX-032', to: 'EQ-TX01', verb: 'APPLIES_TO' },
-  { from: 'REQ-SWG-021', to: 'EQ-SWG01', verb: 'APPLIES_TO' },
-  { from: 'REQ-TX-032', to: 'STD-IEEEC57', verb: 'GOVERNED_BY' },
-  { from: 'REQ-SWG-021', to: 'STD-TIA942', verb: 'GOVERNED_BY' },
+  // Systems contain equipment
+  { from: 'SYS-COMPUTE', to: 'EQ-NVL72-SU01', verb: 'CONTAINS' },
+  { from: 'SYS-COMPUTE', to: 'EQ-NVL72-SU02', verb: 'CONTAINS' },
+  { from: 'SYS-COMPUTE', to: 'EQ-NVL72-SU03', verb: 'CONTAINS' },
+  { from: 'SYS-COMPUTE', to: 'EQ-NVL72-SU04', verb: 'CONTAINS' },
+  { from: 'SYS-COMPUTE', to: 'EQ-NVSWITCH', verb: 'CONTAINS' },
+  { from: 'SYS-COMPUTE', to: 'EQ-CX8-MZB', verb: 'CONTAINS' },
+  { from: 'SYS-COMPUTE', to: 'EQ-BF3-DPU', verb: 'CONTAINS' },
+  { from: 'SYS-NETWORK', to: 'EQ-SN5610-LEAF', verb: 'CONTAINS' },
+  { from: 'SYS-NETWORK', to: 'EQ-SN5600-SPINE', verb: 'CONTAINS' },
+  { from: 'SYS-MGMT', to: 'EQ-SN2201-OOB', verb: 'CONTAINS' },
+  { from: 'SYS-COOLING', to: 'EQ-CDU-RACK', verb: 'CONTAINS' },
+  { from: 'SYS-POWER', to: 'EQ-PSU-SHELF', verb: 'CONTAINS' },
 
-  { from: 'SUB-CDU01-R1', to: 'EQ-CDU01', verb: 'SUBMITTED_FOR' },
-  { from: 'SUB-TX01-R2', to: 'EQ-TX01', verb: 'SUBMITTED_FOR' },
-  { from: 'SUB-SWG01-R1', to: 'EQ-SWG01', verb: 'SUBMITTED_FOR' },
+  // Specifications → Requirements
+  { from: 'SPEC-COOL-001', to: 'REQ-COOL-001', verb: 'SPECIFIES' },
+  { from: 'SPEC-COOL-001', to: 'REQ-COOL-002', verb: 'SPECIFIES' },
+  { from: 'SPEC-NET-001', to: 'REQ-NET-001', verb: 'SPECIFIES' },
+  { from: 'SPEC-NVLINK-001', to: 'REQ-NVLINK-001', verb: 'SPECIFIES' },
 
-  { from: 'EQ-TX01', to: 'PO-884', verb: 'SUPPLIED_UNDER' },
-  { from: 'EQ-TX02', to: 'PO-884', verb: 'SUPPLIED_UNDER' },
-  { from: 'EQ-SWG01', to: 'PO-992', verb: 'SUPPLIED_UNDER' },
-  { from: 'PO-884', to: 'VEN-KAPPA', verb: 'ISSUED_TO' },
-  { from: 'PO-992', to: 'VEN-MERIDIAN', verb: 'ISSUED_TO' },
+  // Requirements → Equipment
+  { from: 'REQ-COOL-001', to: 'EQ-CDU-RACK', verb: 'APPLIES_TO' },
+  { from: 'REQ-COOL-002', to: 'EQ-CDU-RACK', verb: 'APPLIES_TO' },
+  { from: 'REQ-NET-001', to: 'EQ-CX8-MZB', verb: 'APPLIES_TO' },
+  { from: 'REQ-NVLINK-001', to: 'EQ-NVSWITCH', verb: 'APPLIES_TO' },
+  { from: 'REQ-NET-001', to: 'SPEC-NVRA-001', verb: 'GOVERNED_BY' },
+  { from: 'REQ-COOL-001', to: 'SPEC-NVRA-001', verb: 'GOVERNED_BY' },
 
-  { from: 'EQ-TX01', to: 'ACT-A102', verb: 'ALLOCATED_TO' },
-  { from: 'ACT-A102', to: 'ACT-A100', verb: 'DEPENDS_ON' },
-  { from: 'ACT-A140', to: 'ACT-A102', verb: 'DEPENDS_ON' },
-  { from: 'ACT-A200', to: 'ACT-A140', verb: 'DEPENDS_ON' },
-  { from: 'ACT-A210', to: 'ACT-A200', verb: 'DEPENDS_ON' },
+  // Submittals → Equipment
+  { from: 'SUB-CDU-R1', to: 'EQ-CDU-RACK', verb: 'SUBMITTED_FOR' },
+  { from: 'SUB-RACK-R2', to: 'EQ-NVL72-SU01', verb: 'SUBMITTED_FOR' },
+  { from: 'SUB-BF3-R1', to: 'EQ-BF3-DPU', verb: 'SUBMITTED_FOR' },
 
-  { from: 'PER-MASON', to: 'PRJ-AQUILA', verb: 'OWNS' },
-  { from: 'PER-RIVERA', to: 'SPEC-MECH-02', verb: 'OWNS' },
+  // Equipment → Purchase Orders
+  { from: 'EQ-NVL72-SU01', to: 'PO-2061', verb: 'SUPPLIED_UNDER' },
+  { from: 'EQ-NVL72-SU02', to: 'PO-2061', verb: 'SUPPLIED_UNDER' },
+  { from: 'EQ-NVL72-SU03', to: 'PO-2061', verb: 'SUPPLIED_UNDER' },
+  { from: 'EQ-NVL72-SU04', to: 'PO-2061', verb: 'SUPPLIED_UNDER' },
+  { from: 'EQ-CDU-RACK', to: 'PO-2087', verb: 'SUPPLIED_UNDER' },
+  { from: 'EQ-SN5610-LEAF', to: 'PO-2094', verb: 'SUPPLIED_UNDER' },
+  { from: 'EQ-PSU-SHELF', to: 'PO-2098', verb: 'SUPPLIED_UNDER' },
+
+  // POs → Vendors
+  { from: 'PO-2061', to: 'VEN-NVIDIA-OEM', verb: 'ISSUED_TO' },
+  { from: 'PO-2087', to: 'VEN-COOLANT', verb: 'ISSUED_TO' },
+  { from: 'PO-2094', to: 'VEN-FIBER', verb: 'ISSUED_TO' },
+  { from: 'PO-2098', to: 'VEN-PDU', verb: 'ISSUED_TO' },
+
+  // Equipment → Schedule Activities
+  { from: 'EQ-NVL72-SU01', to: 'ACT-S400', verb: 'ALLOCATED_TO' },
+  { from: 'EQ-SN5610-LEAF', to: 'ACT-S500', verb: 'ALLOCATED_TO' },
+
+  // Schedule dependency chain
+  { from: 'ACT-S400', to: 'ACT-S100', verb: 'DEPENDS_ON' },
+  { from: 'ACT-S500', to: 'ACT-S400', verb: 'DEPENDS_ON' },
+  { from: 'ACT-S500', to: 'ACT-S200', verb: 'DEPENDS_ON' },
+  { from: 'ACT-S500', to: 'ACT-S300', verb: 'DEPENDS_ON' },
+  { from: 'ACT-S600', to: 'ACT-S500', verb: 'DEPENDS_ON' },
+  { from: 'ACT-S700', to: 'ACT-S600', verb: 'DEPENDS_ON' },
+  { from: 'ACT-S800', to: 'ACT-S700', verb: 'DEPENDS_ON' },
+  { from: 'ACT-S900', to: 'ACT-S800', verb: 'DEPENDS_ON' },
+
+  // People
+  { from: 'PER-SHARMA', to: 'PRJ-NVL72-AIFC', verb: 'OWNS' },
+  { from: 'PER-CHEN', to: 'SPEC-COOL-001', verb: 'OWNS' },
 ];
 
 export function buildSeedGraph(): TypedGraph {

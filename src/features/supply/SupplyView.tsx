@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { DecisionRecord } from '@/server/types';
 import { StatusBadge } from '@/components/StatusBadge';
-import { RiskMap } from '@/components/RiskMap';
+import { RiskMap, MapMode } from '@/components/RiskMap';
 import { useDecisions, useEntityIndex, useSupplyChain } from '@/core/api/hooks';
 import { useWorkspace } from '@/core/state/workspace';
 
@@ -28,6 +28,8 @@ export function SupplyView() {
   const { data: entityData } = useEntityIndex();
   const selectedId = useWorkspace((s) => s.selectedDecisionId);
   const selectDecision = useWorkspace((s) => s.selectDecision);
+
+  const [mapMode, setMapMode] = useState<MapMode>('flow');
 
   const rows = useMemo(() => {
     if (!decisionData) return [] as DecisionRecord[];
@@ -82,13 +84,49 @@ export function SupplyView() {
                 <div style={{ fontSize: '11px', color: 'var(--txt-md)', marginTop: '4px' }}>Live view of critical equipment shipments</div>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button style={{ background: 'var(--teal-dim)', border: '1px solid var(--teal-line)', color: 'var(--teal)', padding: '6px 12px', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}>
+                <button
+                  onClick={() => setMapMode('flow')}
+                  style={{
+                    background: mapMode === 'flow' ? 'var(--teal-dim)' : 'transparent',
+                    border: `1px solid ${mapMode === 'flow' ? 'var(--teal-line)' : 'var(--line)'}`,
+                    color: mapMode === 'flow' ? 'var(--teal)' : 'var(--txt-md)',
+                    padding: '6px 12px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
                   Flow View
                 </button>
-                <button style={{ background: 'transparent', border: '1px solid var(--line)', color: 'var(--txt-md)', padding: '6px 12px', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}>
+                <button
+                  onClick={() => setMapMode('route')}
+                  style={{
+                    background: mapMode === 'route' ? 'var(--teal-dim)' : 'transparent',
+                    border: `1px solid ${mapMode === 'route' ? 'var(--teal-line)' : 'var(--line)'}`,
+                    color: mapMode === 'route' ? 'var(--teal)' : 'var(--txt-md)',
+                    padding: '6px 12px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
                   Route View
                 </button>
-                <button style={{ background: 'transparent', border: '1px solid var(--line)', color: 'var(--txt-md)', padding: '6px 12px', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}>
+                <button
+                  onClick={() => setMapMode('heatmap')}
+                  style={{
+                    background: mapMode === 'heatmap' ? 'var(--teal-dim)' : 'transparent',
+                    border: `1px solid ${mapMode === 'heatmap' ? 'var(--teal-line)' : 'var(--line)'}`,
+                    color: mapMode === 'heatmap' ? 'var(--teal)' : 'var(--txt-md)',
+                    padding: '6px 12px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
                   Heatmap View
                 </button>
               </div>
@@ -99,7 +137,7 @@ export function SupplyView() {
                 <div style={{ color: 'var(--txt-md)', margin: 'auto' }}>Loading geospatial data...</div>
               ) : (
                 <div style={{ flex: 1, width: '100%', position: 'relative', minHeight: '400px' }}>
-                  {supply && <RiskMap points={supply.points} arcs={supply.arcs} />}
+                  {supply && <RiskMap points={supply.points} arcs={supply.arcs} mode={mapMode} />}
                 </div>
               )}
             </div>

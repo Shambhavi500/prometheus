@@ -30,16 +30,16 @@ export interface ScheduleEvaluation {
 }
 
 export function runScheduleRisk(graph: TypedGraph, ids: { risk: () => string; decision: () => string; finding: () => string }): ScheduleEvaluation {
-  const origin = graph.requireNode('ACT-A102');
+  const origin = graph.requireNode('ACT-S400');
   const assumed = Number(origin.props.assumedLeadTimeWeeks);
-  const quoted = 128; // Extracted from VQ-884 pg 2 (perception-layer output).
-  const quoteCitation = cite('DOC-VQ-884', 'VQ-2-1');
-  const baselineCitation = cite('DOC-P6-EXTR', 'P6-1-2');
+  const quoted = 20; // Extracted from OEM confirmation received 14-Jul-2026 — actual lead time 20 weeks vs 18-week P6 baseline.
+  const quoteCitation = cite('DOC-P6-AIFC', 'P6-1-2');
+  const baselineCitation = cite('DOC-CX-AIFC', 'CX-1-2');
 
   const slipAtOrigin = quoted - assumed;
   if (slipAtOrigin <= 0) return { findings: [] };
 
-  const chainNodes = graph.downstreamChain('ACT-A102');
+  const chainNodes = graph.downstreamChain('ACT-S400');
   const slips = propagateSlip(slipAtOrigin, chainNodes.map((c) => ({ freeFloatWeeks: Number(c.props.freeFloatWeeks) })));
 
   const steps: CascadeStep[] = [];
@@ -77,7 +77,7 @@ export function runScheduleRisk(graph: TypedGraph, ids: { risk: () => string; de
   const istSlip = ist?.slipOutWeeks ?? slips[slips.length - 1] ?? slipAtOrigin;
 
   const cascade: CascadeResult = {
-    originActivityId: 'A102',
+    originActivityId: 'S400',
     quotedLeadTimeWeeks: quoted,
     assumedLeadTimeWeeks: assumed,
     slipAtOriginWeeks: slipAtOrigin,
@@ -91,10 +91,10 @@ export function runScheduleRisk(graph: TypedGraph, ids: { risk: () => string; de
 
   const trace: TraceStep[] = [
     { index: 1, total: 5, actor: 'Orchestrator', text: 'Routing to Schedule-Risk Agent...' },
-    { index: 2, total: 5, actor: 'Schedule-Risk Agent', text: 'Extracting required lead time from VQ-884, pg 2...', payload: { quotedLeadTimeWeeks: quoted, source: 'VQ-2-1' } },
-    { index: 3, total: 5, actor: 'Schedule-Risk Agent', text: 'Comparing to P6 Activity A102 baseline assumption (90 weeks)...', payload: { assumedLeadTimeWeeks: assumed, source: 'P6-1-2' } },
-    { index: 4, total: 5, actor: 'Schedule-Risk Agent', text: `Conflict detected: ${quoted} weeks (quoted) vs ${assumed} weeks (baseline). Simulating P6 schedule cascade...`, payload: { slipAtOriginWeeks: slipAtOrigin } },
-    { index: 5, total: 5, actor: 'Schedule-Risk Agent', text: `Cascade complete: ${slipAtOrigin}-week delivery slip, ${slipAtOrigin - istSlip} weeks absorbed by downstream float, predicted L5 IST slip ${istSlip} weeks.`, payload: { steps: steps.map((s) => ({ activity: s.activityId, slipOut: s.slipOutWeeks })) } },
+    { index: 2, total: 5, actor: 'Schedule-Risk Agent', text: 'Extracting actual rack delivery lead time from OEM confirmation dated 14-Jul-2026 and CX-AIFC-001 Rev 3...', payload: { quotedLeadTimeWeeks: quoted, source: 'P6-1-2' } },
+    { index: 3, total: 5, actor: 'Schedule-Risk Agent', text: 'Comparing to P6 Activity S400 baseline assumption (18 weeks from PO-2061 award 01-Apr-2026)...', payload: { assumedLeadTimeWeeks: assumed, source: 'P6-1-2' } },
+    { index: 4, total: 5, actor: 'Schedule-Risk Agent', text: `Conflict detected: ${quoted} weeks (actual) vs ${assumed} weeks (baseline). Simulating P6 schedule cascade across AI Factory build path...`, payload: { slipAtOriginWeeks: slipAtOrigin } },
+    { index: 5, total: 5, actor: 'Schedule-Risk Agent', text: `Cascade complete: ${slipAtOrigin}-week delivery slip, ${slipAtOrigin - istSlip} weeks absorbed by downstream float, predicted L5 AI Workload Acceptance slip ${istSlip} weeks.`, payload: { steps: steps.map((s) => ({ activity: s.activityId, slipOut: s.slipOutWeeks })) } },
   ];
 
   const finding: Finding = {
@@ -103,20 +103,20 @@ export function runScheduleRisk(graph: TypedGraph, ids: { risk: () => string; de
     agentName: 'Schedule-Risk Agent',
     kind: 'schedule-risk',
     severity: 'Critical',
-    title: 'TX-01 lead-time conflict threatens L5 IST',
-    finding: `Vendor quotation lists a 128-week lead time for TX-01 [VQ-884, pg 2], conflicting with the 90-week assumption in P6 Activity A102 [P6-EXTR-2026-07, Basis of Schedule §2.4].`,
-    impact: `Computed cascade predicts an ${istSlip}-week slip to L5 Integrated Systems Testing (baseline finish ${fmtDate(ist?.baselineFinish ?? '2028-05-05')} → predicted ${fmtDate(ist?.predictedFinish ?? '')}). 30 weeks of downstream float are fully consumed.`,
-    recommendation: `Re-baseline P6 Activity A102 to the quoted 128-week lead time and evaluate phased power alternatives for NM-1 energization.`,
+    title: 'GB300 NVL72 rack delivery slip threatens L5 AI Workload Acceptance',
+    finding: `OEM confirmation (14-Jul-2026) indicates a 20-week actual lead time for GB300 NVL72 racks (PO-2061), conflicting with the 18-week assumption in P6 Activity S400 [P6-AIFC-2026-07, Basis of Schedule §3.1]. The 2-week slip propagates through the AI Factory build path: rack installation (S500) → Spectrum-X fabric commissioning (S600) → NVLink domain validation (S700) → GPU burn-in (S800) → L5 AI Workload Acceptance (S900).`,
+    impact: `Computed cascade predicts a ${istSlip}-week slip to L5 AI Workload Acceptance Testing (baseline finish ${fmtDate(ist?.baselineFinish ?? '2027-06-30')} → predicted ${fmtDate(ist?.predictedFinish ?? '')}). ${slipAtOrigin - istSlip} weeks of downstream float are consumed. NVLink cabling for SU-04 to SU-08 (already at risk from fiber transceiver customs hold) is further compressed.`,
+    recommendation: `Re-baseline P6 Activity S400 to the 20-week actual lead time and evaluate whether fiber transceiver air-freight (per NVL72-PILOT Hyderabad precedent) can partially recover the NVLink cabling float.`,
     confidence: 0.95,
     citations: [quoteCitation, baselineCitation],
     trace,
-    entityIds: ['EQ-TX01', 'PO-884', 'ACT-A102', 'ACT-A210', 'VEN-KAPPA'],
+    entityIds: ['EQ-NVL72-SU01', 'PO-2061', 'ACT-S400', 'ACT-S900', 'VEN-NVIDIA-OEM'],
     riskId,
     decisionId,
     cascade,
   };
 
-  // Entity-resolution flag: the quote references "T-01"; resolver mapped it to TX-01 at 72%.
+  // Entity-resolution flag: commissioning matrix references 'SU-1'; resolver mapped it to SU-01 at 78%.
   const resRiskId = ids.risk();
   const resDecisionId = ids.decision();
   const resFindingId = ids.finding();
@@ -126,18 +126,18 @@ export function runScheduleRisk(graph: TypedGraph, ids: { risk: () => string; de
     agentName: 'Schedule-Risk Agent',
     kind: 'entity-resolution',
     severity: 'Medium',
-    title: `Entity resolution: 'T-01' → TX-01 (72% confidence)`,
-    finding: `VQ-884 references unit 'T-01' [VQ-884, pg 2]. Entity resolution mapped 'T-01' to Equipment Tag TX-01 (72% confidence, fuzzy tag match). The lead-time conflict above depends on this mapping.`,
-    impact: `If 'T-01' does not refer to TX-01, the computed cascade is attributed to the wrong asset and the A102 re-baseline may be unnecessary.`,
-    recommendation: `Verify the resolution of 'T-01' to TX-01 against the PO-884 line items. Manual verification recommended below the 80% confidence threshold.`,
-    confidence: 0.72,
+    title: `Entity resolution: 'SU-1' → SU-01 (78% confidence)`,
+    finding: `CX-AIFC-001 Rev 3 references rack unit 'SU-1' [CX-AIFC-001, CX-1-2]. Entity resolution mapped 'SU-1' to Equipment Tag SU-01 (GB300 NVL72 Rack — Scalable Unit 01) at 78% confidence (fuzzy tag match). The delivery slip finding above depends on this mapping.`,
+    impact: `If 'SU-1' refers to a different asset, the computed cascade is attributed to the wrong rack unit and the S400 re-baseline may be unnecessary.`,
+    recommendation: `Verify the resolution of 'SU-1' to SU-01 against the PO-2061 line items. Manual verification recommended below the 80% confidence threshold.`,
+    confidence: 0.78,
     citations: [quoteCitation],
     trace: [
-      { index: 1, total: 3, actor: 'Entity Resolution', text: `Deterministic key match failed: 'T-01' is not a registered Equipment Tag.` },
-      { index: 2, total: 3, actor: 'Entity Resolution', text: `Fuzzy match (blocking + similarity): 'T-01' → TX-01 scored 0.72; 'T-01' → TX-02 scored 0.41.`, payload: { candidates: { 'TX-01': 0.72, 'TX-02': 0.41 } } },
+      { index: 1, total: 3, actor: 'Entity Resolution', text: `Deterministic key match failed: 'SU-1' is not a registered Equipment Tag.` },
+      { index: 2, total: 3, actor: 'Entity Resolution', text: `Fuzzy match (blocking + similarity): 'SU-1' → SU-01 scored 0.78; 'SU-1' → SU-02 scored 0.72.`, payload: { candidates: { 'SU-01': 0.78, 'SU-02': 0.72 } } },
       { index: 3, total: 3, actor: 'Entity Resolution', text: 'Confidence below auto-merge threshold (80%). Queued for human verification.' },
     ],
-    entityIds: ['EQ-TX01', 'PO-884'],
+    entityIds: ['EQ-NVL72-SU01', 'PO-2061'],
     riskId: resRiskId,
     decisionId: resDecisionId,
   };
@@ -156,9 +156,9 @@ export function evaluateDynamicScheduleRisk(
   // If activityId is not directly extracted but equipment is, find the activity
   let activityId = ex.activityId;
   if (!activityId && ex.equipmentTag) {
-    // Attempt to map Equipment -> Activity. Hardcoding A102 fallback for hackathon velocity as it maps to TX-01
-    if (ex.equipmentTag.includes('TX-01') || ex.equipmentTag.includes('T-01')) {
-      activityId = 'ACT-A102';
+    // Attempt to map Equipment -> Activity. Map rack equipment to S400 for NVIDIA AI Factory.
+    if (ex.equipmentTag.includes('SU-') || ex.equipmentTag.includes('NVL72') || ex.equipmentTag.includes('GB300')) {
+      activityId = 'ACT-S400';
     }
   }
   

@@ -80,32 +80,32 @@ export function runCommissioning(
     tree.push({ id: sys.id, tag: sys.tag, name: sys.name, kind: 'system', levels: rollup, readinessPct: readiness, children });
   }
 
-  // Finding — SYS-01 turnover gap linked to the upstream TX-01 supply cause.
+  // Finding — SYS-COMPUTE turnover gap linked to the upstream rack delivery slip and fiber customs hold.
   const findings: Finding[] = [];
-  const sys01 = tree.find((t) => t.id === 'SYS-01');
-  if (sys01 && (sys01.levels.L4 !== 'Complete' || sys01.levels.L5 !== 'Complete')) {
-    const gapCite = cite('DOC-CX-MATRIX', 'CX-1-6');
-    const mvCite = cite('DOC-CX-MATRIX', 'CX-1-2');
+  const sysCompute = tree.find((t) => t.id === 'SYS-COMPUTE');
+  if (sysCompute && (sysCompute.levels.L4 !== 'Complete' || sysCompute.levels.L5 !== 'Complete')) {
+    const gapCite = cite('DOC-CX-AIFC', 'CX-1-13');
+    const mvCite = cite('DOC-CX-AIFC', 'CX-1-2');
     const riskId = ids.risk();
     const decisionId = ids.decision();
     const findingId = ids.finding();
     const trace: TraceStep[] = [
       { index: 1, total: 4, actor: 'Orchestrator', text: 'Routing to Commissioning Agent...' },
-      { index: 2, total: 4, actor: 'Commissioning Agent', text: 'Rolling up L1–L5 test records for SYS-01 subsystems...', payload: { SS_01A: sys01.children?.[0]?.readinessPct, SS_01B: sys01.children?.[1]?.readinessPct } },
-      { index: 3, total: 4, actor: 'Commissioning Agent', text: 'MV Distribution (SS-01A) L1 blocked: no TX-01 unit to witness FAT.', payload: { source: 'CX-1-2' } },
-      { index: 4, total: 4, actor: 'Commissioning Agent', text: 'Tracing upstream cause: SS-01A → TX-01 → A102 (128-week lead) → PO-884. L4/L5 cannot be sequenced.' },
+      { index: 2, total: 4, actor: 'Commissioning Agent', text: 'Rolling up L1–L5 test records for SYS-COMPUTE subsystems (SS-COMPUTE-A, SS-COMPUTE-B, SS-NVLINK, SS-FABRIC)...', payload: { SS_COMPUTE_A: sysCompute.children?.[0]?.readinessPct, SS_COMPUTE_B: sysCompute.children?.[1]?.readinessPct } },
+      { index: 3, total: 4, actor: 'Commissioning Agent', text: 'SS-COMPUTE-A L1 FAT blocked: GB300 NVL72 Racks SU-01/SU-02 in manufacture (20-week actual lead vs 18-week baseline). No units available for FAT witness.', payload: { source: 'CX-1-2' } },
+      { index: 4, total: 4, actor: 'Commissioning Agent', text: 'Tracing upstream causes: SS-COMPUTE-A → EQ-NVL72-SU01 → ACT-S400 (2-week slip). SS-COMPUTE-B → SS-NVLINK → SHP-FIBER-001 (customs hold). L2 NVLink domain validation and L4/L5 cannot be sequenced until both blockers are resolved.' },
     ];
     findings.push({
       id: findingId, agentId: 'AGT-CX', agentName: 'Commissioning Agent', kind: 'commissioning-gap',
       severity: 'High',
-      title: 'SYS-01 L4/L5 turnover gap — blocked by TX-01 delivery',
-      finding: `System 01 readiness is ${sys01.readinessPct}%. L4 Functional and L5 Integrated Systems Testing cannot be sequenced until TX-01 is delivered and energized [CX-MATRIX-DH1, SYS-01 rollup]. MV Distribution FAT is blocked with no unit available [CX-MATRIX-DH1, SS-01A].`,
-      impact: `The commissioning turnover gap is a direct downstream effect of the TX-01 lead-time slip and Kappa single-source exposure. SYS-01 cannot achieve L5 IST on the current baseline.`,
-      recommendation: `Re-sequence SYS-01 L4/L5 against the re-baselined A102 delivery, and pull BMS (SYS-03) commissioning forward to protect the integrated test window.`,
-      confidence: 0.88,
+      title: 'SYS-COMPUTE NVLink L2/L5 commissioning gap — blocked by rack delivery + transceiver customs hold',
+      finding: `GPU Compute Cluster readiness is ${sysCompute.readinessPct}%. L4 Functional and L5 AI Workload Acceptance Testing cannot be sequenced until: (1) GB300 NVL72 Racks SU-01/SU-02 are delivered and passed FAT, and (2) QSFP112/OSFP transceiver batch (SHP-FIBER-001) clears Pune customs for NVLink inter-rack cabling [CX-AIFC-001 Rev 3, L5 Rollup].`,
+      impact: `The commissioning turnover gap is caused by two concurrent upstream blockers: the 2-week rack delivery slip (ACT-S400) and the QSFP112/OSFP transceiver customs hold (14-day estimated clearance). The NVLink 5th-Gen domain validation (L2 SAT), GPU burn-in (L3), and 576-GPU L5 AI Workload Acceptance cannot be sequenced until both are resolved.`,
+      recommendation: `Re-sequence SYS-COMPUTE L2/L5 commissioning against the re-baselined S400 rack delivery. Authorize air-freight of transceiver batch (NVL72-PILOT precedent). Pull OOB Management (SYS-MGMT) commissioning forward to protect the L5 AI Workload Acceptance window.`,
+      confidence: 0.90,
       citations: [gapCite, mvCite],
       trace,
-      entityIds: ['SYS-01', 'SS-01A', 'EQ-TX01', 'ACT-A102'],
+      entityIds: ['SYS-COMPUTE', 'SS-COMPUTE-A', 'EQ-NVL72-SU01', 'ACT-S400'],
       riskId, decisionId,
     });
   }

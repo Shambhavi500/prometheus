@@ -43,12 +43,16 @@ interface ExtractedValue {
   secondaryDeviation?: string;
 }
 
-/** Perception-layer output for Project Meghdoot (stands in for LLM extraction). */
+/** Perception-layer output for NVIDIA AI Factory NVL72-AIFC-001 (stands in for LLM extraction). */
 const EXTRACTIONS: ExtractedValue[] = [
-  { requirementId: 'REQ-CDU-041', submittalId: 'SUB-CDU01-R1', value: 400, displayValue: '400 V / 3-phase / 50 Hz', docId: 'DOC-SUB-CDU01-R1', blockId: 'SC1-3-2', confidence: 0.97, secondaryDeviation: 'Frequency 50 Hz vs required 60 Hz' },
-  { requirementId: 'REQ-CDU-044', submittalId: 'SUB-CDU01-R1', value: null, displayValue: 'Not stated', docId: 'DOC-SUB-CDU01-R1', blockId: 'SC1-3-1', confidence: 0.9 },
-  { requirementId: 'REQ-TX-032', submittalId: 'SUB-TX01-R2', value: 480, displayValue: '480Y/277 V', docId: 'DOC-SUB-TX01-R2', blockId: 'ST1-2-1', confidence: 0.99 },
-  { requirementId: 'REQ-SWG-021', submittalId: 'SUB-SWG01-R1', value: 65, displayValue: '65 kA RMS symmetrical', docId: 'DOC-SUB-SWG01-R1', blockId: 'SW1-4-1', confidence: 0.98 },
+  // CDU thermal capacity: submitted 128 kW vs required ≥ 142 kW — DEVIATION
+  { requirementId: 'REQ-COOL-001', submittalId: 'SUB-CDU-R1', value: 128, displayValue: '128 kW (PCS-LCC-128 standard model)', docId: 'DOC-SUB-CDU-R1', blockId: 'SCD-2-1', confidence: 0.97, secondaryDeviation: 'Vendor notes an uprated coil insert (PCS-CI-LCC-142) is required for 142 kW — 6-week uplift lead time' },
+  // CDU inrush current: not stated in submittal — DATA GAP
+  { requirementId: 'REQ-COOL-002', submittalId: 'SUB-CDU-R1', value: null, displayValue: 'Not stated — refer to factory', docId: 'DOC-SUB-CDU-R1', blockId: 'SCD-3-3', confidence: 0.92 },
+  // ConnectX-8 MZB compute bandwidth: submitted 800 Gb/s per NIC — COMPLIANT
+  { requirementId: 'REQ-NET-001', submittalId: 'SUB-RACK-R2', value: 800, displayValue: '800 Gb/s per ConnectX-8 SuperNIC (4 per tray)', docId: 'DOC-SUB-RACK-R2', blockId: 'SRK-2-1', confidence: 0.99 },
+  // NVLink port count per GPU: submitted 18 — COMPLIANT
+  { requirementId: 'REQ-NVLINK-001', submittalId: 'SUB-RACK-R2', value: 18, displayValue: '18 NVSwitch ASICs per GPU via copper backplane', docId: 'DOC-SUB-RACK-R2', blockId: 'SRK-3-1', confidence: 0.99 },
 ];
 
 export interface SpecEvaluation {
@@ -114,6 +118,7 @@ export function runSpecCompliance(graph: TypedGraph, ids: { risk: () => string; 
         { index: 3, total: 4, actor: 'Spec-Compliance Agent', text: `Evaluating deterministic comparison: required ${requiredValue}${unit} = submitted ${ex.value}${unit} → false.`, payload: { operator: req.props.operator, required: requiredValue, submitted: ex.value } },
         { index: 4, total: 4, actor: 'Spec-Compliance Agent', text: `Deviation recorded. Confidence ${(ex.confidence * 100).toFixed(0)}% (exact parameter match in validated submittal).` },
       ];
+      const isNvidiaCooling = req.id === 'REQ-COOL-001';
       findings.push({
         id: findingId,
         agentId: 'AGT-SPEC',
@@ -121,9 +126,13 @@ export function runSpecCompliance(graph: TypedGraph, ids: { risk: () => string; 
         kind: 'spec-deviation',
         severity: 'High',
         title: `${equipment?.tag} ${String(req.props.parameter).toLowerCase()} deviation`,
-        finding: `${submittal.tag} states ${ex.displayValue}, conflicting with the ${requiredDisplay} requirement [${specCitation.docTitle}, Clause ${specCitation.clause}].${ex.secondaryDeviation ? ` Secondary deviation: ${ex.secondaryDeviation}.` : ''}`,
-        impact: `Non-compliant electrical supply blocks L2 energization of the cooling loop. Rework discovered at FAT stage is estimated at 6 weeks.`,
-        recommendation: `Generate RFI to Owner documenting the deviation. Hold ${submittal.tag} disposition pending vendor response on the 480 V / 60 Hz configuration.`,
+        finding: `${submittal.tag} (Precision Cooling Systems AG) states ${ex.displayValue}, conflicting with the NVIDIA-required ${requiredDisplay} threshold [${specCitation.docTitle}, Clause ${specCitation.clause}].${ex.secondaryDeviation ? ` Note from vendor: ${ex.secondaryDeviation}.` : ''}`,
+        impact: isNvidiaCooling
+          ? `A CDU rated at 128 kW cannot sustain the full GB300 NVL72 rack TDP of 142 kW under sustained training workloads. Under full 72-GPU LLM training load, GPU thermal throttling will activate within 4–6 hours, degrading training throughput by an estimated 10%. L1 FAT witness cannot proceed until the spec deviation is resolved.`
+          : `Non-compliant ${String(req.props.parameter).toLowerCase()} blocks L2 commissioning of the affected subsystem. Rework discovered at FAT stage is estimated at 6 weeks.`,
+        recommendation: isNvidiaCooling
+          ? `Issue RFI-CDU-001 to Precision Cooling Systems AG requesting the uprated coil insert kit (PCS-CI-LCC-142) which lifts CDU capacity to 142 kW. Evaluate interim de-rated GPU cluster operation at 90% TDP (65 active GPUs of 72) consistent with NVL72-PILOT Hyderabad precedent (DEC-P02).`
+          : `Generate RFI to Owner documenting the deviation. Hold ${submittal.tag} disposition pending vendor response.`,
         confidence: ex.confidence,
         citations: [specCitation, ...(submittalCitation ? [submittalCitation] : [])],
         trace,
@@ -140,8 +149,8 @@ export function runSpecCompliance(graph: TypedGraph, ids: { risk: () => string; 
       row.findingId = findingId;
       const trace: TraceStep[] = [
         { index: 1, total: 3, actor: 'Spec-Compliance Agent', text: `Extracting ${String(req.props.parameter).toLowerCase()} requirement from ${specCitation.docTitle} Clause ${specCitation.clause}...` },
-        { index: 2, total: 3, actor: 'Spec-Compliance Agent', text: `Scanning ${submittal.tag} data sheet for stated operating weight... no value located.`, payload: { scannedPages: [1, 2, 3] } },
-        { index: 3, total: 3, actor: 'Spec-Compliance Agent', text: 'Cannot evaluate structural load deterministically. Escalating for human input.' },
+        { index: 2, total: 3, actor: 'Spec-Compliance Agent', text: `Scanning ${submittal.tag} electrical data sheet for inrush current declaration... field present but value reads: 'Not stated — refer to factory'.`, payload: { scannedPages: [1, 2, 3] } },
+        { index: 3, total: 3, actor: 'Spec-Compliance Agent', text: 'Cannot evaluate LV switchboard protection coordination deterministically. Escalating for human input.' },
       ];
       findings.push({
         id: findingId,
@@ -149,11 +158,11 @@ export function runSpecCompliance(graph: TypedGraph, ids: { risk: () => string; 
         agentName: 'Spec-Compliance Agent',
         kind: 'data-gap',
         severity: 'Medium',
-        title: `${equipment?.tag} operating weight not stated`,
-        finding: `${submittal.tag} does not state the unit operating weight required by [${specCitation.docTitle}, Clause ${specCitation.clause}]. Structural load for the NM-1 raised slab cannot be computed.`,
-        impact: `Structural coordination for the NM-1 raised slab is blocked until the flooded operating weight is known.`,
-        recommendation: `Request the flooded operating weight from Helios Thermal Systems and require re-submission of the ${submittal.tag} data sheet.`,
-        confidence: 0.9,
+        title: `${equipment?.tag} inrush current not stated in submittal`,
+        finding: `${submittal.tag} (Precision Cooling Systems AG) does not state the CDU inrush current (peak, 200ms) required by [${specCitation.docTitle}, Clause ${specCitation.clause}]. LV switchboard protection coordination for the data hall PDU cannot be completed without this data.`,
+        impact: `LV switchboard protection relay settings (IDMT curves) for the AI Factory main distribution cannot be finalized. Risk of nuisance tripping during CDU start-up at rack energization, which could interrupt all 72 GPUs in the affected rack.`,
+        recommendation: `Request inrush current data (peak, 200ms) from Precision Cooling Systems AG and require re-submission of the ${submittal.tag} electrical data sheet before rack energization approval.`,
+        confidence: 0.92,
         citations: [specCitation, ...(submittalCitation ? [submittalCitation] : [])],
         trace,
         entityIds: [equipment?.id ?? '', submittal.id, req.id].filter(Boolean),
@@ -277,7 +286,7 @@ export function evaluateDynamicExtraction(
       impact: finding.impact,
       status: 'Pending',
       createdAt: new Date().toISOString(),
-      writeBack: { system: 'Octave', message: 'RFI generated and routed to Owner.' },
+      writeBack: { system: 'NVIDIA Mission Control', message: 'RFI-CDU-001 generated and routed to Precision Cooling Systems AG.' },
     };
     
     return { row, finding, decision };

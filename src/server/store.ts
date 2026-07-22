@@ -18,16 +18,16 @@ import { runKnowledge, categoryOf } from './reasoning/knowledge';
 import type { AuditEntry, CxNode, DecisionRecord, Finding, IsolationProof, LearningEntry, Precedent, SessionUser, SpecCheckRow, SupplyChainData, UploadedDocument } from './types';
 
 const SESSION_USER: SessionUser = {
-  personId: 'PER-MASON',
-  name: 'J. Mason',
-  role: 'Project Director',
-  tenantId: 'ORG-HELIOS',
-  tenantName: 'Helios Grid EPC',
-  projectIds: ['PRJ-AQUILA', 'PRJ-MERIDIAN'],
+  personId: 'PER-SHARMA',
+  name: 'A. Sharma',
+  role: 'AI Factory Project Director',
+  tenantId: 'ORG-NVIDIA-AIFC',
+  tenantName: 'NVIDIA AI Factory EPC',
+  projectIds: ['PRJ-NVL72-AIFC', 'PRJ-NVL72-PILOT'],
   clearances: ['L5-Commissioning', 'Financial'],
 };
 
-const CURRENT_PROJECT = 'PRJ-AQUILA';
+const CURRENT_PROJECT = 'PRJ-NVL72-AIFC';
 
 export interface PlatformStore {
   graph: TypedGraph;
@@ -67,23 +67,23 @@ export function makeIds() {
 
 /** Decision metadata that is workflow-specific (action verb, write-back target). */
 const DECISION_OVERRIDES: Record<string, Partial<DecisionRecord>> = {
-  'schedule-risk': { writeBack: { system: 'Primavera P6', message: 'Decision approved. P6 write-back successful.' } },
-  'spec-deviation': { writeBack: { system: 'Octave', message: 'RFI-402 generated and routed to Owner.' } },
-  'data-gap': { writeBack: { system: 'Octave', message: 'Information request routed to Helios Thermal Systems.' } },
-  'entity-resolution': { writeBack: { system: 'Knowledge Graph', message: 'Resolution confirmed. TX-01 linkage marked Human-Verified.' } },
-  'supply-chain': { writeBack: { system: 'Octave', message: 'Alternate-vendor RFQ generated and routed to Procurement.' } },
-  'commissioning-gap': { writeBack: { system: 'Smart Completions', message: 'Commissioning re-sequence logged to Smart Completions.' } },
-  'knowledge-precedent': { writeBack: { system: 'Primavera P6', message: 'Precedent-based mitigation applied. P6 re-baseline queued.' } },
+  'schedule-risk': { writeBack: { system: 'Primavera P6', message: 'Decision approved. P6 re-baseline of S400 (Rack Delivery) written back successfully.' } },
+  'spec-deviation': { writeBack: { system: 'NVIDIA Mission Control', message: 'RFI-CDU-001 generated and routed to Precision Cooling Systems AG for CDU uprate coil insert.' } },
+  'data-gap': { writeBack: { system: 'NVIDIA Mission Control', message: 'Information request routed to Volta Power Systems for inrush current data.' } },
+  'entity-resolution': { writeBack: { system: 'Knowledge Graph', message: 'Resolution confirmed. SU-01 linkage marked Human-Verified.' } },
+  'supply-chain': { writeBack: { system: 'NVIDIA Mission Control', message: 'Air-freight RFQ for QSFP112/OSFP transceiver batch generated and routed to Procurement.' } },
+  'commissioning-gap': { writeBack: { system: 'NVIDIA Mission Control', message: 'AI Factory commissioning re-sequence logged. NVLink cabling critical path updated.' } },
+  'knowledge-precedent': { writeBack: { system: 'Primavera P6', message: 'Hyderabad Pilot precedent-based mitigation applied. P6 re-baseline queued.' } },
 };
 
 const ACTION_LABEL: Record<string, (f: Finding) => string> = {
-  'schedule-risk': () => 'Re-baseline P6 Activity A102',
-  'spec-deviation': (f) => `Generate RFI for ${f.title.split(' ')[0]} deviation`,
-  'data-gap': () => 'Request operating weight from vendor',
-  'entity-resolution': () => 'Confirm resolution T-01 → TX-01',
-  'supply-chain': (f) => (f.entityIds.includes('VEN-MERIDIAN') ? 'Issue alternate-vendor RFQ for SWG-01' : 'Flag TX-01 as single-source supply risk'),
-  'commissioning-gap': () => 'Re-sequence SYS-01 L4/L5 commissioning',
-  'knowledge-precedent': () => 'Apply DH-0 phased-power precedent',
+  'schedule-risk': () => 'Re-baseline P6 Activity S400 (Rack Delivery) to 20-week lead time',
+  'spec-deviation': (f) => `Issue RFI-CDU-001 for ${f.title.split(' ')[0]} CDU capacity deviation`,
+  'data-gap': () => 'Request inrush current data from Volta Power Systems',
+  'entity-resolution': () => 'Confirm resolution SU-1 → SU-01 entity linkage',
+  'supply-chain': (f) => (f.entityIds.includes('VEN-FIBER') ? 'Authorize air-freight of QSFP112/OSFP transceiver batch from Tokyo' : 'Flag PSU shelf as single-source supply risk — Volta Power Systems'),
+  'commissioning-gap': () => 'Re-sequence SYS-COMPUTE NVLink L2/L5 commissioning against re-baselined rack delivery',
+  'knowledge-precedent': () => 'Apply NVL72-PILOT air-freight precedent for QSFP112 transceiver delay',
 };
 
 function boot(): PlatformStore {
@@ -108,7 +108,7 @@ function boot(): PlatformStore {
 
   const decisions = new Map<string, DecisionRecord>();
   const audit: AuditEntry[] = [
-    { ts: bootedAt, actor: 'Integration Engine', action: 'INGESTED 8 artifacts', target: 'PRJ-AQUILA', source: 'Octave / P6 / Mail connectors' },
+    { ts: bootedAt, actor: 'Integration Engine', action: 'INGESTED 11 artifacts', target: 'PRJ-NVL72-AIFC', source: 'NVIDIA Mission Control / P6 / Mail connectors' },
   ];
 
   for (const f of findings) {
@@ -158,13 +158,13 @@ function boot(): PlatformStore {
   // in-session rejections append to this list (11_AI §16 Systemic Learning).
   const learnings: LearningEntry[] = [
     {
-      id: 'LRN-M01',
-      ts: '2024-09-12T00:00:00Z',
-      actor: 'J. Mason (Project Director)',
-      category: 'transformer-lead-time',
-      subject: 'Rejected like-for-like transformer re-order on DH-0',
-      rationale: 'A re-order carried the same multi-year lead time. Phased-power energization was chosen instead, deferring the permanent unit without slipping IST.',
-      entityTag: 'TX-M0',
+      id: 'LRN-P01',
+      ts: '2025-06-14T00:00:00Z',
+      actor: 'A. Sharma (AI Factory Project Director)',
+      category: 'optical-customs-delay',
+      subject: 'Authorized air-freight for QSFP112 transceiver batch on NVL72-PILOT (Hyderabad)',
+      rationale: 'Standard sea-freight customs clearance would have taken 21 days, slipping NVLink cabling and L2 SAT by 3 weeks. Air-freight at USD 42,000 premium recovered 3 weeks of commissioning float and kept the L5 AI Workload Acceptance milestone on plan.',
+      entityTag: 'CDU-PILOT',
       origin: 'historical',
     },
   ];
@@ -332,7 +332,7 @@ export function ingestDynamicSpec(row: SpecCheckRow, finding?: Finding, decision
     const risk: EntityBase = {
       id: finding.riskId, type: 'Risk', tag: finding.riskId, name: finding.title, status: 'Open',
       owner: store.user.personId, verification: 'SystemVerified',
-      tenantId: store.user.tenantId, projectId: 'PRJ-AQUILA',
+      tenantId: store.user.tenantId, projectId: 'PRJ-NVL72-AIFC',
       props: { severity: finding.severity, confidence: finding.confidence, agent: finding.agentName },
       source: 'live',
       timestamp: now,

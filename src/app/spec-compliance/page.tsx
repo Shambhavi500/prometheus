@@ -17,23 +17,35 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-// Demo Submittal Text designed to fail the N+1 Redundancy requirement
+// Demo Submittal: Precision Cooling Systems AG CDU submittal designed to fail the 142 kW thermal capacity requirement
 const DEMO_SUBMITTAL = `
-VENDOR SUBMITTAL DOCUMENT
-Date: Oct 24, 2026
-Project: Project Prometheus - Data Center Phase 1
-System: Mechanical Cooling
+VENDOR TECHNICAL SUBMITTAL
+Date: 30-Jun-2026
+Project: NVIDIA AI Factory — Pune Cluster (NVL72-AIFC-001)
+Purchase Order: PO-2087
+Document Reference: SUB-CDU-R1 Revision 1
+Vendor: Precision Cooling Systems AG, Stuttgart, Germany
+Equipment: Rack-Level Direct Liquid Cooling Distribution Units (CDU)
+Quantity: 8 Units (1 per GB300 NVL72 Rack / Scalable Unit)
 
 EQUIPMENT DETAILS
-Manufacturer: ABC Industrial Pumps
-Model: XJ-9000 Series Primary Chilled Water Pump
-Type: Centrifugal Pump
-Power Rating: 55 kW
-Flow Rate: 450 L/s
+Model: PCS-LCC-128
+Type: Direct Liquid Cooling Distribution Unit
+Thermal Performance: 128 kW continuous duty at 18°C supply / 38°C return
+Pump Configuration: Primary + standby (N+1)
+Supply Voltage: 415 V / 3-phase / 50 Hz
+Full Load Current: 62 A
+Pump Motor Rating: 11 kW × 2
+Control Voltage: 24 V DC
+Inrush Current: Not stated — refer to factory for coordination study data
 
-CONFIGURATION PROPOSED
-To optimize cost and physical footprint within the mechanical gallery, we are proposing an N (N-only) configuration for the primary chilled water loops. This removes the standby pump unit and saves approximately $120,000 in capital expenditure. Lead time for these units is currently 18 weeks.
+NOTE FROM VENDOR
+The submitted unit (model PCS-LCC-128) is our standard data center CDU rated at 128 kW continuous duty.
+To achieve the 142 kW capacity specified in SPEC-COOL-001 Rev B Clause 4.1.1, an upgraded coil insert
+kit (PCS-CI-LCC-142) must be specified. This kit is available at an additional cost of EUR 8,400 per unit.
+Lead time for the uprated coil insert kit: 6 weeks from order confirmation.
 `;
+
 
 export default function SpecCompliancePage() {
   const [isAuditing, setIsAuditing] = useState(false);

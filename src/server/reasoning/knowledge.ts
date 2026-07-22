@@ -14,15 +14,15 @@ import { cite } from '../graph/tools';
 import type { Finding, IsolationProof, Precedent, TraceStep } from '../types';
 
 const CATEGORY_BLOCK: Record<string, string> = {
-  'transformer-lead-time': 'LL-1-2',
-  'voltage-deviation': 'LL-1-3',
+  'optical-customs-delay': 'LL-1-2',
+  'cdu-capacity-deviation': 'LL-1-3',
 };
 
 /** Derive a pattern category from a current finding (deterministic, no LLM). */
 export function categoryOf(f: Finding): string | undefined {
-  if (f.kind === 'schedule-risk' && f.entityIds.includes('EQ-TX01')) return 'transformer-lead-time';
-  if (f.kind === 'spec-deviation' && f.entityIds.includes('EQ-CDU01')) return 'voltage-deviation';
-  if (f.kind === 'supply-chain') return 'vendor-force-majeure';
+  if (f.kind === 'supply-chain' && f.entityIds.includes('VEN-FIBER')) return 'optical-customs-delay';
+  if (f.kind === 'spec-deviation' && f.entityIds.includes('EQ-CDU-RACK')) return 'cdu-capacity-deviation';
+  if (f.kind === 'supply-chain') return 'vendor-performance-risk';
   return undefined;
 }
 
@@ -73,37 +73,37 @@ export function runKnowledge(
     };
     precedents.push(precedent);
 
-    // Headline: emit a decision-queue finding for the transformer precedent,
-    // which supports the live TX-01 critical.
-    if (category === 'transformer-lead-time') {
+    // Headline: emit a decision-queue finding for the optical-customs-delay precedent,
+    // which supports the active QSFP112 transceiver customs hold critical finding.
+    if (category === 'optical-customs-delay') {
       const riskId = ids.risk();
       const decisionId = ids.decision();
       const findingId = ids.finding();
       const trace: TraceStep[] = [
         { index: 1, total: 4, actor: 'Orchestrator', text: 'Routing to Knowledge/Learning Agent...' },
-        { index: 2, total: 4, actor: 'Knowledge/Learning Agent', text: `Pattern-matching current risk (category: ${category}) across tenant memory...`, payload: { tenant: scope.tenantId, projects: scope.projectIds } },
-        { index: 3, total: 4, actor: 'Knowledge/Learning Agent', text: `Match on ${precedent.historicalProjectTag} (${precedent.historicalYear}): ${match.tag} recovered ${precedent.recoveredWeeks} weeks.`, payload: { decision: match.tag } },
-        { index: 4, total: 4, actor: 'Knowledge/Learning Agent', text: 'Foreign-tenant matches excluded before retrieval. Surfacing precedent.' },
+        { index: 2, total: 4, actor: 'Knowledge/Learning Agent', text: `Pattern-matching current risk (category: ${category}) across NVIDIA AIFC tenant memory...`, payload: { tenant: scope.tenantId, projects: scope.projectIds } },
+        { index: 3, total: 4, actor: 'Knowledge/Learning Agent', text: `Match on ${precedent.historicalProjectTag} (${precedent.historicalYear}): ${match.tag} — air-freight mitigation recovered ${precedent.recoveredWeeks} weeks of NVLink commissioning float.`, payload: { decision: match.tag } },
+        { index: 4, total: 4, actor: 'Knowledge/Learning Agent', text: 'Foreign-tenant matches (Vertex Infrastructure Partners) excluded before retrieval. Surfacing NVIDIA AIFC precedent.' },
       ];
       findings.push({
         id: findingId, agentId: 'AGT-KNOWLEDGE', agentName: 'Knowledge/Learning Agent', kind: 'knowledge-precedent',
         severity: 'Medium',
-        title: `Historical precedent for the TX-01 lead-time risk`,
-        finding: `A matching transformer lead-time pattern was resolved on ${precedent.historicalProjectName} (${precedent.historicalYear}). ${precedent.decisionAction} recovered ${precedent.recoveredWeeks} weeks of L5 IST float with no acceleration premium [LL-DH0-2024, ${precedent.decisionTag}].`,
-        impact: `The proven mitigation applies directly to TX-01: phased-power energization decouples NM-1 turnover from the delayed transformer delivery.`,
-        recommendation: `Apply the ${precedent.historicalProjectTag} phased-power precedent to the TX-01 cascade and evaluate temporary energization for NM-1.`,
-        confidence: 0.84,
+        title: `Historical precedent: NVL72-PILOT air-freight mitigation for QSFP112 customs delay`,
+        finding: `A matching optical transceiver customs delay pattern was resolved on ${precedent.historicalProjectName} (${precedent.historicalYear}). ${precedent.decisionAction} recovered ${precedent.recoveredWeeks} weeks of NVLink commissioning float with an air-freight premium of USD 42,000 [LL-PILOT-2025, ${precedent.decisionTag}].`,
+        impact: `The proven NVL72-PILOT mitigation applies directly to the active QSFP112/OSFP customs hold (SHP-FIBER-001): air-freighting the batch from Tokyo and pre-terminating fiber cables in parallel can recover 2–3 weeks of NVLink cabling float for SU-04 to SU-08.`,
+        recommendation: `Apply the ${precedent.historicalProjectTag} air-freight precedent (DEC-P01) to the QSFP112/OSFP batch customs hold. Simultaneously pre-terminate fiber cables for racks SU-04 to SU-08 in parallel with customs clearance.`,
+        confidence: 0.88,
         citations: [precedent.citation],
         trace,
-        entityIds: ['EQ-TX01', match.projectId!, match.id],
+        entityIds: ['SHP-FIBER-001', match.projectId!, match.id],
         riskId, decisionId,
       });
     }
   }
 
-  // Isolation proof: an identical pattern exists across the tenant wall but is
-  // never returned by scoped reads.
-  const patternCategory = 'transformer-lead-time';
+  // Isolation proof: an identical pattern exists across the tenant wall (Vertex Infrastructure Partners)
+  // but is never returned by scoped reads.
+  const patternCategory = 'optical-customs-delay';
   const inTenant = scopedDecisions.filter((d) => d.props.category === patternCategory).length;
   const allMatches = graph
     .allNodes()
@@ -111,14 +111,14 @@ export function runKnowledge(
   const blocked = allMatches - inTenant;
 
   const isolation: IsolationProof = {
-    foreignTenant: 'Vanta Infrastructure',
-    foreignProject: 'Project Titan (DH-X)',
+    foreignTenant: 'Vertex Infrastructure Partners',
+    foreignProject: 'Vertex AI Factory (VERTEX-AIF)',
     patternCategory,
     inTenantMatches: inTenant,
     blockedCrossTenant: blocked,
     note:
       blocked > 0
-        ? `Project Titan resolved an identical transformer lead-time pattern, but it belongs to another tenant. Scoped traversal terminated before returning it — ${blocked} cross-tenant match blocked.`
+        ? `Vertex Infrastructure Partners resolved an identical QSFP112 customs delay pattern on their AI Factory project, but it belongs to a different tenant. Scoped traversal terminated before returning it — ${blocked} cross-tenant match blocked.`
         : 'No cross-tenant matches exist for this pattern.',
   };
 
