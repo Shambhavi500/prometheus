@@ -109,8 +109,8 @@ export function AppFrame({ children }: { children: ReactNode }) {
       <div className="app-row">
         {pathname !== '/' && (
           <nav className="rail" aria-label="Workspace navigation">
-          <div className="rail__brand" title="ET – Engineering Intelligence Platform">
-            <img src="/just_logo.png" alt="ET" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
+          <div className="rail__brand" title="PROMETHEUS - Engineering Intelligence Operating System">
+            <img src="/just_logo.png" alt="P" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
           </div>
           {NAV.map((item) => (
             <Link key={item.path} href={item.path} prefetch={true} className={`rail__item${pathname.startsWith(item.path) ? ' active' : ''}`}>

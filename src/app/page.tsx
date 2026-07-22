@@ -246,7 +246,7 @@ export default function Home() {
               ← Back to Projects
             </button>
             <div style={{ fontSize: '14px', color: 'var(--teal)', fontWeight: 500 }}>
-              ET — Engineering Intelligence Platform
+              PROMETHEUS — Engineering Intelligence Operating System
             </div>
           </div>
 

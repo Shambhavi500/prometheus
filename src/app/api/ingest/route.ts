@@ -30,7 +30,7 @@ export async function POST(request: Request) {
         }
 
         send(`[00:01] Ingesting connected project documents...`);
-        send(`[00:03] Initializing ET Document Intelligence Engine...`);
+        send(`[00:03] Initializing Document Intelligence Engine...`);
         sendProgress(10);
         
         send(`[00:09] Initializing ingestion of user-uploaded document: ${fileName}...`);

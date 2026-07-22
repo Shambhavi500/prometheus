@@ -14,7 +14,7 @@ export function UniversalBreadcrumb() {
   const decision = data?.decisions.find(d => d.id === selectedDecisionId);
 
   const moduleMap: Record<string, string> = {
-    '/overview': 'Mission Control',
+    '/overview': 'Overview',
     '/console': 'Command Console',
     '/spec-compliance': 'Specification',
     '/schedule-risk': 'Schedule',

@@ -246,7 +246,7 @@ export function OverviewView() {
     } catch (e: any) {
       setMessages(prev => [...prev, {
         sender: 'ai',
-        text: `Error querying ET RAG Engine: ${e.message}`,
+        text: `Error querying RAG Engine: ${e.message}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }]);
     } finally {
@@ -256,23 +256,6 @@ export function OverviewView() {
 
   return (
     <div className="page" style={{ background: 'var(--bg-0)' }}>
-      {/* Top Header Bar */}
-      <div className="page__header">
-        <div>
-          <h1 className="page__title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            Mission Control
-            <span style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '4px', background: 'var(--teal-dim)', border: '1px solid var(--teal-line)', color: 'var(--teal)' }}>
-              ET ENGINEERING INTELLIGENCE
-            </span>
-          </h1>
-        </div>
-        <span className="page__spacer" />
-        <span className="page__meta" style={{ display: 'flex', gap: '24px' }}>
-          <span>Platform: <span style={{ color: 'var(--txt-hi)' }}>ET</span></span>
-          <span>Role: <span style={{ color: 'var(--txt-hi)' }}>Lead Engineer</span></span>
-        </span>
-      </div>
-
       <div className="page__body" style={{ overflowY: 'auto', display: 'block', paddingBottom: '96px' }}>
         <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '32px 32px 0', display: 'flex', flexDirection: 'column', gap: '40px' }}>
 
@@ -283,7 +266,7 @@ export function OverviewView() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <h2 style={{ fontSize: '20px', color: 'var(--txt-hi)', margin: 0, fontWeight: 400 }}>
-                  Ask ET anything...
+                  Ask AI anything...
                 </h2>
                 <span className="mono" style={{ fontSize: '10px', color: 'var(--teal)', background: 'var(--teal-dim)', padding: '2px 8px', borderRadius: '4px' }}>
                   HYBRID RAG SEARCH
@@ -341,7 +324,7 @@ export function OverviewView() {
                 {messages.map((msg, i) => (
                   <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start', maxWidth: msg.sender === 'user' ? '80%' : '100%', width: msg.sender === 'ai' ? '100%' : 'auto' }}>
                     <div style={{ fontSize: '10px', color: 'var(--txt-md)' }}>
-                      {msg.sender === 'user' ? 'Lead Engineer' : 'ET Assistant'} · {msg.timestamp}
+                      {msg.sender === 'user' ? 'Lead Engineer' : 'AI Assistant'} · {msg.timestamp}
                     </div>
 
                     <div style={{ 
