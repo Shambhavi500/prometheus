@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { getStore } from '@/server/store';
 import { EntityBase } from '@prometheus/ontology';
 
-const ai = new GoogleGenAI({});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export interface ExtractedEntities {
   equipmentTags: string[];

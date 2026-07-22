@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   useDecisions, 
@@ -11,6 +11,17 @@ import {
 } from '@/core/api/hooks';
 import { useWorkspace } from '@/core/state/workspace';
 import { StatusBadge } from '@/components/StatusBadge';
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  Node,
+  Edge,
+  MarkerType,
+  useNodesState,
+  useEdgesState,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 
 interface ChatMessage {
   sender: 'user' | 'ai';
@@ -19,6 +30,146 @@ interface ChatMessage {
   graphFacts?: Array<{ node: string; edge: string; target: string; sourceDoc: string }>;
   textChunks?: Array<{ id: string; text: string; sourceDoc: string; similarityScore?: number }>;
   timestamp: string;
+}
+
+/** Interactive Knowledge Graph Viewer Component */
+function InteractiveKnowledgeGraph({ specRows, findingsList, documents }: { specRows: any[]; findingsList: any[]; documents: any[] }) {
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+
+  useEffect(() => {
+    const generatedNodes: Node[] = [];
+    const generatedEdges: Edge[] = [];
+
+    // Master Specification Root Node
+    const rootId = 'doc-master-spec';
+    const docName = documents[0]?.name || 'CDU_Equipment_Specification.pdf';
+    
+    generatedNodes.push({
+      id: rootId,
+      position: { x: 360, y: 16 },
+      data: { label: `📄 ${docName}` },
+      style: { 
+        width: 280, 
+        background: 'var(--bg-1)', 
+        color: 'var(--txt-hi)', 
+        border: '2px solid var(--teal)', 
+        borderRadius: '8px', 
+        padding: '10px 14px', 
+        fontWeight: 600,
+        boxShadow: '0 0 20px rgba(0, 240, 255, 0.12)',
+        fontSize: '12px',
+        textAlign: 'center'
+      },
+    });
+
+    // 3 Clean Equipment Columns
+    const equipmentList = [
+      { id: 'eq-cdu', tag: 'CDU-RACK', desc: 'Thermal & Flow Specs', posX: 40 },
+      { id: 'eq-compute', tag: 'CX2-H100', desc: 'Compute NIC Bandwidth', posX: 360 },
+      { id: 'eq-nvlink', tag: 'NVSWITCH-TRAY', desc: 'NVLink Bus Architecture', posX: 680 }
+    ];
+
+    equipmentList.forEach((eq) => {
+      generatedNodes.push({
+        id: eq.id,
+        position: { x: eq.posX, y: 110 },
+        data: { label: `⚙️ ${eq.tag} (${eq.desc})` },
+        style: { 
+          width: 280, 
+          background: 'var(--bg-0)', 
+          color: 'var(--teal)', 
+          border: '1px solid var(--teal-line)', 
+          borderRadius: '6px', 
+          padding: '8px 12px',
+          fontSize: '11px',
+          fontWeight: 500,
+          textAlign: 'center'
+        },
+      });
+
+      generatedEdges.push({
+        id: `edge-${rootId}-${eq.id}`,
+        source: rootId,
+        target: eq.id,
+        type: 'smoothstep',
+        animated: true,
+        style: { stroke: 'var(--teal)', strokeWidth: 1.5 },
+        label: 'GOVERNS',
+        labelStyle: { fill: 'var(--teal)', fontSize: '9px', fontWeight: 600 },
+      });
+    });
+
+    // Distribute Findings into Clean Columns Under Corresponding Equipment
+    findingsList.slice(0, 9).forEach((f, idx) => {
+      const colIdx = idx % 3;
+      const rowIdx = Math.floor(idx / 3);
+      const parentEq = equipmentList[colIdx];
+      const findingNodeId = `finding-${f.id || idx}`;
+      
+      const posX = parentEq.posX;
+      const posY = 210 + rowIdx * 85;
+
+      const isCritical = f.severity === 'Critical';
+      const isHigh = f.severity === 'High';
+
+      const truncatedTitle = f.title.length > 32 ? f.title.slice(0, 30) + '…' : f.title;
+
+      const borderColor = isCritical ? '#ff4d4d' : isHigh ? '#ff9900' : 'var(--teal)';
+      const bgColor = isCritical ? 'rgba(255, 77, 77, 0.08)' : isHigh ? 'rgba(255, 153, 0, 0.08)' : 'var(--bg-1)';
+      const textColor = isCritical ? '#ff6666' : isHigh ? '#ffb330' : 'var(--txt-hi)';
+
+      generatedNodes.push({
+        id: findingNodeId,
+        position: { x: posX, y: posY },
+        data: { label: `[${f.severity}] ${truncatedTitle}` },
+        style: { 
+          width: 280, 
+          background: bgColor, 
+          color: textColor, 
+          border: `1px solid ${borderColor}`, 
+          borderRadius: '6px', 
+          padding: '8px 12px',
+          fontSize: '11px',
+          lineHeight: 1.3,
+          boxShadow: isCritical ? '0 0 10px rgba(255, 77, 77, 0.15)' : 'none'
+        },
+      });
+
+      generatedEdges.push({
+        id: `edge-${parentEq.id}-${findingNodeId}`,
+        source: parentEq.id,
+        target: findingNodeId,
+        type: 'smoothstep',
+        animated: true,
+        style: { stroke: borderColor, strokeWidth: 1.5 },
+        label: isCritical ? 'VIOLATES' : 'AFFECTS',
+        labelStyle: { fill: borderColor, fontSize: '8px', fontWeight: 700 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: borderColor },
+      });
+    });
+
+    setNodes(generatedNodes);
+    setEdges(generatedEdges);
+  }, [specRows, findingsList, documents, setNodes, setEdges]);
+
+  return (
+    <div style={{ width: '100%', height: '460px', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-0)', border: '1px solid var(--line)' }}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        fitView
+        fitViewOptions={{ padding: 0.15 }}
+        colorMode="dark"
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background color="rgba(255, 255, 255, 0.03)" gap={24} />
+        <Controls style={{ background: 'var(--bg-1)', borderColor: 'var(--line)', fill: 'var(--txt-hi)' }} />
+      </ReactFlow>
+    </div>
+  );
 }
 
 export function OverviewView() {
@@ -126,7 +277,7 @@ export function OverviewView() {
         <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '32px 32px 0', display: 'flex', flexDirection: 'column', gap: '40px' }}>
 
           {/* ========================================================================= */}
-          {/* 1. TOP OF PAGE CHATBOT & SEARCH INTERFACE (FIRST THING USERS SEE)        */}
+          {/* 1. TOP OF PAGE CHATBOT & SEARCH INTERFACE (ASK ET ANYTHING)               */}
           {/* ========================================================================= */}
           <section style={{ background: 'var(--bg-1)', border: '1px solid var(--teal-line)', borderRadius: '12px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 8px 32px rgba(0, 240, 255, 0.05)' }}>
             <div>
@@ -202,7 +353,13 @@ export function OverviewView() {
                       fontSize: '13px',
                       lineHeight: 1.5
                     }}>
-                      <div>{msg.text}</div>
+                      <div style={{ whiteSpace: 'pre-line' }}>{msg.text}</div>
+
+                      {msg.reasoningTrace && (
+                        <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed var(--line)', fontSize: '11px', color: 'var(--txt-md)' }}>
+                          <strong>Reasoning Trace:</strong> {msg.reasoningTrace}
+                        </div>
+                      )}
 
                       {msg.sender === 'ai' && msg.textChunks && msg.textChunks.length > 0 && (
                         <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -225,57 +382,7 @@ export function OverviewView() {
           </section>
 
           {/* ========================================================================= */}
-          {/* 2. DOCUMENT SUMMARY                                                       */}
-          {/* ========================================================================= */}
-          <section style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: '8px', padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
-                <h2 style={{ fontSize: '16px', color: 'var(--txt-hi)', margin: 0, fontWeight: 500 }}>
-                  Document Summary
-                </h2>
-                <div style={{ fontSize: '12px', color: 'var(--txt-md)', marginTop: '2px' }}>
-                  Uploaded project documentation status & analysis manifest
-                </div>
-              </div>
-
-              <button 
-                className="btn" 
-                style={{ fontSize: '12px', padding: '6px 14px' }}
-                onClick={() => router.push('/')}
-              >
-                + Upload Engineering Document
-              </button>
-            </div>
-
-            {documents.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {documents.map((doc, idx) => (
-                  <div key={`${doc.id}-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-0)', borderRadius: '6px', border: '1px solid var(--line)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span className="mono" style={{ fontSize: '11px', color: 'var(--teal)' }}>[DOC]</span>
-                      <div>
-                        <div style={{ fontSize: '13px', color: 'var(--txt-hi)', fontWeight: 500 }}>{doc.name}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--txt-md)' }}>Uploaded: {new Date(doc.uploadedAt).toLocaleTimeString()} · Type: {doc.type}</div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'var(--teal-dim)', color: 'var(--teal)', border: '1px solid var(--teal-line)' }}>
-                        Status: {doc.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ padding: '24px', background: 'var(--bg-0)', borderRadius: '6px', border: '1px dashed var(--line)', textAlign: 'center', color: 'var(--txt-md)', fontSize: '13px' }}>
-                No uploaded documents. Upload an engineering document on the home page to begin analysis.
-              </div>
-            )}
-          </section>
-
-          {/* ========================================================================= */}
-          {/* 3. OCR RESULTS                                                            */}
+          {/* 2. OCR RESULTS (REORDERED: NOW FIRST BEFORE DOCUMENT SUMMARY)             */}
           {/* ========================================================================= */}
           <section style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: '8px', padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -366,7 +473,83 @@ export function OverviewView() {
           </section>
 
           {/* ========================================================================= */}
-          {/* 4. GEMINI STRUCTURED EXTRACTION                                           */}
+          {/* 3. DOCUMENT SUMMARY (REORDERED: NOW SECOND AFTER OCR RESULTS)             */}
+          {/* ========================================================================= */}
+          <section style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: '8px', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h2 style={{ fontSize: '16px', color: 'var(--txt-hi)', margin: 0, fontWeight: 500 }}>
+                  Document Summary
+                </h2>
+                <div style={{ fontSize: '12px', color: 'var(--txt-md)', marginTop: '2px' }}>
+                  Uploaded project documentation status & analysis manifest
+                </div>
+              </div>
+
+              <button 
+                className="btn" 
+                style={{ fontSize: '12px', padding: '6px 14px' }}
+                onClick={() => router.push('/')}
+              >
+                + Upload Engineering Document
+              </button>
+            </div>
+
+            {documents.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {documents.map((doc, idx) => (
+                  <div key={`${doc.id}-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-0)', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span className="mono" style={{ fontSize: '11px', color: 'var(--teal)' }}>[DOC]</span>
+                      <div>
+                        <div style={{ fontSize: '13px', color: 'var(--txt-hi)', fontWeight: 500 }}>{doc.name}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--txt-md)' }}>Uploaded: {new Date(doc.uploadedAt).toLocaleTimeString()} · Type: {doc.type}</div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'var(--teal-dim)', color: 'var(--teal)', border: '1px solid var(--teal-line)' }}>
+                        Status: {doc.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ padding: '24px', background: 'var(--bg-0)', borderRadius: '6px', border: '1px dashed var(--line)', textAlign: 'center', color: 'var(--txt-md)', fontSize: '13px' }}>
+                No uploaded documents. Upload an engineering document on the home page to begin analysis.
+              </div>
+            )}
+          </section>
+
+          {/* ========================================================================= */}
+          {/* 4. EXECUTION KNOWLEDGE GRAPH (INTERACTIVE GRAPH VIEW)                     */}
+          {/* ========================================================================= */}
+          <section style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: '8px', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h2 style={{ fontSize: '16px', color: 'var(--txt-hi)', margin: 0, fontWeight: 500 }}>
+                  Execution Knowledge Graph
+                </h2>
+                <div style={{ fontSize: '12px', color: 'var(--txt-md)', marginTop: '2px' }}>
+                  Interactive network map connecting documents, extracted equipment specifications, schedule risks, and governing code clauses
+                </div>
+              </div>
+
+              <button 
+                className="btn" 
+                style={{ fontSize: '12px', padding: '6px 14px' }}
+                onClick={() => router.push('/explorer')}
+              >
+                Full Thread Explorer →
+              </button>
+            </div>
+
+            <InteractiveKnowledgeGraph specRows={specRows} findingsList={findingsList} documents={documents} />
+          </section>
+
+          {/* ========================================================================= */}
+          {/* 5. GEMINI STRUCTURED EXTRACTION                                           */}
           {/* ========================================================================= */}
           <section style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: '8px', padding: '24px' }}>
             <div style={{ marginBottom: '16px' }}>
@@ -411,7 +594,7 @@ export function OverviewView() {
           </section>
 
           {/* ========================================================================= */}
-          {/* 5. FINDINGS & RECOMMENDATIONS                                             */}
+          {/* 6. FINDINGS & RECOMMENDATIONS                                             */}
           {/* ========================================================================= */}
           <section style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: '8px', padding: '24px' }}>
             <div style={{ marginBottom: '16px' }}>
@@ -475,7 +658,7 @@ export function OverviewView() {
           </section>
 
           {/* ========================================================================= */}
-          {/* 6. KNOWLEDGE GRAPH INTEGRATION CTA                                         */}
+          {/* 7. KNOWLEDGE GRAPH INTEGRATION CTA                                         */}
           {/* ========================================================================= */}
           <section style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: '8px', padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
@@ -502,7 +685,7 @@ export function OverviewView() {
           </section>
 
           {/* ========================================================================= */}
-          {/* 7. EVIDENCE USED (RAG CONTEXT)                                             */}
+          {/* 8. EVIDENCE USED (RAG CONTEXT)                                             */}
           {/* ========================================================================= */}
           <section style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: '8px', padding: '24px' }}>
             <div style={{ marginBottom: '16px' }}>

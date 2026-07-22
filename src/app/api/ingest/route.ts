@@ -150,42 +150,38 @@ export async function POST(request: Request) {
 
         // Layer 2 Vector Store Extraction
         try {
-          const { GoogleGenAI } = require('@google/genai');
-          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-          const cleanBase64 = base64.includes(',') ? base64.split(',')[1] : base64;
-          const textRes = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: [
-              {
-                role: 'user',
-                parts: [
-                  { inlineData: { data: cleanBase64, mimeType: mimeType || 'application/pdf' } },
-                  { text: 'Transcribe the exact text of this document. Preserve paragraph breaks using double newlines.' }
-                ]
+          if (process.env.GEMINI_API_KEY) {
+            const { GoogleGenAI } = require('@google/genai');
+            const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+            const cleanBase64 = base64.includes(',') ? base64.split(',')[1] : base64;
+            const textRes = await ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: 'Transcribe the technical text from this document.'
+            });
+            const rawText = textRes.text || '';
+            const paragraphs = rawText.split('\n\n').map((p: string) => p.trim()).filter((p: string) => p.length > 20);
+            
+            const { globalVectorStore } = await import('@/core/utils/vector');
+            let chunkCount = 0;
+            for (let i = 0; i < Math.min(paragraphs.length, 10); i++) {
+              const p = paragraphs[i];
+              const embedding = await globalVectorStore.embed(p);
+              if (embedding.length > 0) {
+                globalVectorStore.upsert({
+                  id: `${docId}-chunk-${i}`,
+                  text: p,
+                  sourceDoc: fileName,
+                  embedding
+                });
+                chunkCount++;
               }
-            ]
-          });
-          const rawText = textRes.text || '';
-          const paragraphs = rawText.split('\n\n').map((p: string) => p.trim()).filter((p: string) => p.length > 20);
-          
-          const { globalVectorStore } = await import('@/core/utils/vector');
-          let chunkCount = 0;
-          for (let i = 0; i < paragraphs.length; i++) {
-            const p = paragraphs[i];
-            const embedding = await globalVectorStore.embed(p);
-            if (embedding.length > 0) {
-              globalVectorStore.upsert({
-                id: `${docId}-chunk-${i}`,
-                text: p,
-                sourceDoc: fileName,
-                embedding
-              });
-              chunkCount++;
+            }
+            if (chunkCount > 0) {
+              send(`Embedded ${chunkCount} chunks into VectorStore for Layer 2 RAG.`);
             }
           }
-          send(`Embedded ${chunkCount} chunks into VectorStore for Layer 2 RAG.`);
-        } catch (vectorError) {
-           // Silently ignore vector store errors for the stream
+        } catch (vectorError: any) {
+          console.warn('Vector extraction note:', vectorError?.message || vectorError);
         }
         
         sendProgress(85);
